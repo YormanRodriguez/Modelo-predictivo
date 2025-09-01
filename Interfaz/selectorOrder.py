@@ -1,8 +1,88 @@
-# selectorOrder.py - Diseño Original con Espaciado Optimizado
+# selectorOrder.py - Diseño Original con Bridge de Parámetros Optimizado
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
-import time
+import os
+import sys
+import time 
+
+# IMPORTAR EL BRIDGE DE COMUNICACIÓN
+BRIDGE_AVAILABLE = False
+get_updated_presets = None
+clear_bridge_data = None
+
+# CONFIGURAR RUTA PARA IMPORTAR DESDE BACKEND
+BRIDGE_AVAILABLE = False
+get_updated_presets = None
+clear_bridge_data = None
+
+def setup_bridge_import():
+    """Configurar importación del bridge desde backend"""
+    global BRIDGE_AVAILABLE, get_updated_presets, clear_bridge_data
+    
+    print("DEBUG: Configurando bridge para estructura Interfaz/backend...")
+    
+    # Obtener directorio actual (Interfaz)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    print(f"DEBUG: Directorio actual (Interfaz): {current_dir}")
+    
+    # Directorio padre (raíz del proyecto)
+    parent_dir = os.path.dirname(current_dir)
+    print(f"DEBUG: Directorio padre: {parent_dir}")
+    
+    # Directorio backend
+    backend_dir = os.path.join(parent_dir, 'backend')
+    print(f"DEBUG: Directorio backend: {backend_dir}")
+    
+    # Verificar que existe parametros_bridge.py en backend
+    bridge_file = os.path.join(backend_dir, 'parametros_bridge.py')
+    print(f"DEBUG: Buscando bridge en: {bridge_file}")
+    
+    if os.path.exists(bridge_file):
+        print("DEBUG: ✓ Archivo bridge encontrado")
+        
+        # Agregar backend al path
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+            print(f"DEBUG: Backend agregado al sys.path: {backend_dir}")
+        
+        try:
+            # Importar desde backend
+            import parametros_bridge # type: ignore
+            get_updated_presets = parametros_bridge.get_updated_presets
+            clear_bridge_data = parametros_bridge.clear_bridge_data
+            
+            BRIDGE_AVAILABLE = True
+            print("✓ Bridge de parámetros cargado desde backend")
+            
+            # Probar funciones
+            try:
+                presets = get_updated_presets()
+                if presets:
+                    print(f"✓ Presets dinámicos disponibles: {len(presets)}")
+                    for preset_name, preset_data in presets.items():
+                        model = preset_data['model']
+                        precision = model.get('precision_final', 0)
+                        print(f"  - {preset_name}: Precisión {precision:.1f}%")
+                else:
+                    print("⚠ No hay presets optimizados disponibles (ejecute primero el optimizador)")
+                return True
+                
+            except Exception as func_error:
+                print(f"⚠ Error probando funciones bridge: {func_error}")
+                return True  # Bridge disponible pero sin datos
+                
+        except ImportError as import_error:
+            print(f"✗ Error importando bridge: {import_error}")
+            return False
+            
+    else:
+        print("✗ No se encontró parametros_bridge.py en backend")
+        return False
+
+# Ejecutar configuración del bridge
+setup_bridge_import()
+
 
 # Variables globales para almacenar los parámetros seleccionados
 SELECTED_ORDER = (4, 0, 0)  # Valores por defecto
@@ -10,7 +90,7 @@ SELECTED_SEASONAL_ORDER = (1, 0, 0, 8)  # Valores por defecto
 PARAMETERS_CONFIRMED = False
 CURRENT_WINDOW = None
 
-
+# RESTO DEL CÓDIGO DE LA CLASE PERMANECE IGUAL
 class ParameterSelectorWindow:
     def __init__(self, parent, callback_function, module_name):
         self.parent = parent
@@ -23,8 +103,15 @@ class ParameterSelectorWindow:
         self.order_vars = {'p': tk.IntVar(), 'd': tk.IntVar(), 'q': tk.IntVar()}
         self.seasonal_vars = {'P': tk.IntVar(), 'D': tk.IntVar(), 'Q': tk.IntVar(), 's': tk.IntVar()}
         
+        # NUEVA VARIABLE PARA PRESETS DINÁMICOS
+        self.dynamic_presets = None
+        self.presets_loaded = False
+        
         # Cargar valores por defecto
         self.load_default_values()
+        
+        # CARGAR PRESETS ACTUALIZADOS DEL BRIDGE
+        self.load_bridge_presets()
         
         self.create_window()
         
@@ -41,6 +128,91 @@ class ParameterSelectorWindow:
         self.seasonal_vars['Q'].set(SELECTED_SEASONAL_ORDER[2])
         self.seasonal_vars['s'].set(SELECTED_SEASONAL_ORDER[3])
         
+    def load_bridge_presets(self):
+        """FUNCIÓN MEJORADA: Cargar presets desde el bridge"""
+        if not BRIDGE_AVAILABLE or get_updated_presets is None:
+            print("DEBUG: Bridge no disponible para cargar presets")
+            return
+            
+        try:
+            print("DEBUG: Cargando presets desde bridge...")
+            updated_presets = get_updated_presets()
+            if updated_presets:
+                self.dynamic_presets = updated_presets
+                self.presets_loaded = True
+                print("✓ Presets dinámicos cargados exitosamente:")
+                for preset_name, preset_data in updated_presets.items():
+                    model = preset_data['model']
+                    precision = model.get('precision_final', 0)
+                    order = model.get('order')
+                    print(f"  - {preset_name}: order={order}, precisión={precision:.1f}%")
+            else:
+                print("DEBUG: get_updated_presets() retornó None - no hay datos optimizados")
+                
+        except Exception as e:
+            print(f"ERROR: Cargando presets del bridge: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+class ParameterSelectorWindow:
+    def __init__(self, parent, callback_function, module_name):
+        self.parent = parent
+        self.callback_function = callback_function
+        self.module_name = module_name
+        self.window = None
+        self.confirmed = False
+        
+        # Variables para los parámetros
+        self.order_vars = {'p': tk.IntVar(), 'd': tk.IntVar(), 'q': tk.IntVar()}
+        self.seasonal_vars = {'P': tk.IntVar(), 'D': tk.IntVar(), 'Q': tk.IntVar(), 's': tk.IntVar()}
+        
+        # NUEVA VARIABLE PARA PRESETS DINÁMICOS
+        self.dynamic_presets = None
+        self.presets_loaded = False
+        
+        # Cargar valores por defecto
+        self.load_default_values()
+        
+        # CARGAR PRESETS ACTUALIZADOS DEL BRIDGE
+        self.load_bridge_presets()
+        
+        self.create_window()
+        
+    def load_default_values(self):
+        """Cargar valores por defecto basados en los parámetros actuales globales"""
+        global SELECTED_ORDER, SELECTED_SEASONAL_ORDER
+        
+        self.order_vars['p'].set(SELECTED_ORDER[0])
+        self.order_vars['d'].set(SELECTED_ORDER[1])
+        self.order_vars['q'].set(SELECTED_ORDER[2])
+        
+        self.seasonal_vars['P'].set(SELECTED_SEASONAL_ORDER[0])
+        self.seasonal_vars['D'].set(SELECTED_SEASONAL_ORDER[1])
+        self.seasonal_vars['Q'].set(SELECTED_SEASONAL_ORDER[2])
+        self.seasonal_vars['s'].set(SELECTED_SEASONAL_ORDER[3])
+        
+    def load_bridge_presets(self):
+        """NUEVA FUNCIÓN: Cargar presets desde el bridge"""
+        if not BRIDGE_AVAILABLE:
+            print("⚠ Bridge no disponible, usando presets por defecto")
+            return
+            
+        try:
+            updated_presets = get_updated_presets()
+            if updated_presets:
+                self.dynamic_presets = updated_presets
+                self.presets_loaded = True
+                print("✓ Presets dinámicos cargados desde bridge:")
+                for preset_name, preset_data in updated_presets.items():
+                    model = preset_data['model']
+                    print(f"  - {preset_name}: order={model['order']}, seasonal_order={model['seasonal_order']}")
+            else:
+                print("⚠ No se encontraron presets actualizados en bridge")
+                
+        except Exception as e:
+            print(f"Error cargando presets del bridge: {e}")
+        
     def create_window(self):
         """Crear la ventana de selección de parámetros - DISEÑO ORIGINAL OPTIMIZADO"""
         global CURRENT_WINDOW
@@ -55,10 +227,11 @@ class ParameterSelectorWindow:
         self.window = tk.Toplevel(self.parent)
         CURRENT_WINDOW = self.window
         
-        # Configuración de la ventana - TAMAÑO REDUCIDO PERO MANTENIENDO ESTÉTICA
+        # Configuración de la ventana - TAMAÑO AJUSTADO PARA MOSTRAR STATUS
+        window_height = 680 if self.presets_loaded else 620
         self.window.title(f"Configurar Parámetros SARIMAX - {self.module_name}")
-        self.window.geometry("650x620")  # Reducido más debido a la eliminación del botón
-        self.window.resizable(True, True)  # Permitir redimensionar por si acaso
+        self.window.geometry(f"650x{window_height}")
+        self.window.resizable(True, True)
         self.window.configure(bg='#f8fafc')
         
         # Hacer que la ventana sea modal
@@ -66,7 +239,7 @@ class ParameterSelectorWindow:
         self.window.grab_set()
         
         # Centrar la ventana
-        self.center_window()
+        self.center_window(window_height)
         
         # Configurar el cierre de la ventana
         self.window.protocol("WM_DELETE_WINDOW", self.on_cancel)
@@ -77,12 +250,12 @@ class ParameterSelectorWindow:
         # Enfocar la ventana
         self.window.focus_force()
         
-    def center_window(self):
+    def center_window(self, height):
         """Centrar la ventana en la pantalla"""
         self.window.update_idletasks()
         x = (self.window.winfo_screenwidth() // 2) - (650 // 2)
-        y = (self.window.winfo_screenheight() // 2) - (620 // 2)
-        self.window.geometry(f"650x620+{x}+{y}")
+        y = (self.window.winfo_screenheight() // 2) - (height // 2)
+        self.window.geometry(f"650x{height}+{x}+{y}")
         
     def create_content_with_scroll(self):
         """Crear contenido con scroll como respaldo para pantallas muy pequeñas"""
@@ -112,20 +285,24 @@ class ParameterSelectorWindow:
         self.create_optimized_content(scrollable_frame)
         
     def create_optimized_content(self, parent):
-        """Crear el contenido original con espaciado optimizado"""
+        """Crear el contenido original con espaciado optimizado y bridge status"""
         # Título principal - ESPACIADO REDUCIDO
         title_label = tk.Label(parent, 
                               text=f"Configuración de Parámetros SARIMAX",
                               font=('Segoe UI', 16, 'bold'),
                               bg='#f8fafc', fg='#1e40af')
-        title_label.pack(pady=(0, 3))  # Reducido de (0, 5)
+        title_label.pack(pady=(0, 3))
         
         # Subtítulo con el módulo - ESPACIADO REDUCIDO
         subtitle_label = tk.Label(parent,
                                  text=f"Módulo: {self.module_name}",
                                  font=('Segoe UI', 12),
                                  bg='#f8fafc', fg='#6b7280')
-        subtitle_label.pack(pady=(0, 12))  # Reducido de (0, 20)
+        subtitle_label.pack(pady=(0, 5))
+        
+        # NUEVA SECCIÓN: STATUS DEL BRIDGE
+        if BRIDGE_AVAILABLE:
+            self.create_bridge_status_section(parent)
         
         # Sección de información - ESPACIADO REDUCIDO
         self.create_info_section(parent)
@@ -136,7 +313,7 @@ class ParameterSelectorWindow:
         # Sección de parámetros estacionales - ESPACIADO REDUCIDO
         self.create_seasonal_section(parent)
         
-        # Sección de presets - ESPACIADO REDUCIDO
+        # Sección de presets - ESPACIADO REDUCIDO CON PRESETS DINÁMICOS
         self.create_presets_section(parent)
         
         # Sección de validación - ESPACIADO REDUCIDO
@@ -145,17 +322,98 @@ class ParameterSelectorWindow:
         # Botones de acción - ESPACIADO REDUCIDO
         self.create_action_buttons(parent)
         
+    def create_bridge_status_section(self, parent):
+        """NUEVA FUNCIÓN: Mostrar status del bridge"""
+        if not BRIDGE_AVAILABLE:
+            return
+            
+        status_frame = tk.LabelFrame(parent, text="🔗 Estado de la Conexión con Optimizador", 
+                                    font=('Segoe UI', 11, 'bold'),
+                                    bg='#f8fafc', fg='#7c3aed',
+                                    relief='ridge', bd=2)
+        status_frame.pack(fill='x', pady=(0, 10))
+        
+        # Contenido del status
+        status_content = tk.Frame(status_frame, bg='#f8fafc')
+        status_content.pack(fill='x', padx=15, pady=8)
+        
+        if self.presets_loaded:
+            # Bridge funcionando correctamente
+            status_icon = "✅"
+            status_text = "Conectado - Presets actualizados con resultados de optimización"
+            status_color = '#10b981'
+            bg_color = '#ecfdf5'
+            
+            # Mostrar información adicional
+            info_text = ("Los presets 'Conservador', 'Solo Tendencia' y 'Agresivo' han sido actualizados "
+                        "automáticamente con los mejores parámetros encontrados por el optimizador.")
+        else:
+            # Bridge no tiene datos
+            status_icon = "⚠️"
+            status_text = "Desconectado - Usando presets predeterminados"
+            status_color = '#f59e0b'
+            bg_color = '#fffbeb'
+            
+            info_text = ("No se detectaron parámetros optimizados. Para obtener presets personalizados, "
+                        "ejecute primero el optimizador de parámetros.")
+        
+        # Label principal del status
+        status_label = tk.Label(status_content,
+                               text=f"{status_icon} {status_text}",
+                               font=('Segoe UI', 10, 'bold'),
+                               bg=bg_color, fg=status_color,
+                               relief='solid', bd=1,
+                               padx=10, pady=6)
+        status_label.pack(fill='x')
+        
+        # Información adicional
+        info_label = tk.Label(status_content,
+                             text=info_text,
+                             font=('Segoe UI', 9),
+                             bg='#f8fafc', fg='#6b7280',
+                             wraplength=550, justify='left')
+        info_label.pack(pady=(5, 0))
+        
+        # Botón para limpiar bridge si hay datos
+        if self.presets_loaded:
+            clear_button = tk.Button(status_content,
+                                   text="Limpiar y usar presets originales",
+                                   font=('Segoe UI', 8),
+                                   bg='#ef4444', fg='white',
+                                   relief='flat', cursor='hand2',
+                                   command=self.clear_bridge_and_reload)
+            clear_button.pack(pady=(5, 0))
+        
+    def clear_bridge_and_reload(self):
+        """Limpiar bridge y recargar presets originales"""
+        if messagebox.askyesno("Confirmar Limpieza", 
+                              "¿Desea limpiar los presets optimizados y volver a los originales?\n"
+                              "Esta acción no se puede deshacer."):
+            try:
+                if BRIDGE_AVAILABLE:
+                    clear_bridge_data()
+                
+                # Recargar ventana
+                self.window.destroy()
+                self.__init__(self.parent, self.callback_function, self.module_name)
+                
+                messagebox.showinfo("Limpieza Completada", 
+                                   "Los presets han sido restaurados a los valores originales.")
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"Error limpiando bridge: {e}")
+        
     def create_info_section(self, parent):
         """Crear sección de información sobre SARIMAX - VERSIÓN COMPACTA"""
         info_frame = tk.LabelFrame(parent, text="ℹ️ Información sobre Parámetros SARIMAX", 
                                   font=('Segoe UI', 11, 'bold'),
                                   bg='#f8fafc', fg='#1e40af',
                                   relief='ridge', bd=2)
-        info_frame.pack(fill='x', pady=(0, 10))  # Reducido de (0, 15)
+        info_frame.pack(fill='x', pady=(0, 10))
         
-        info_text = tk.Text(info_frame, height=3, wrap='word', font=('Segoe UI', 9),  # Reducido de height=4
+        info_text = tk.Text(info_frame, height=3, wrap='word', font=('Segoe UI', 9),
                            bg='#ffffff', fg='#374151', relief='flat', bd=5)
-        info_text.pack(fill='x', padx=10, pady=8)  # Reducido de pady=10
+        info_text.pack(fill='x', padx=10, pady=8)
         
         info_content = """SARIMAX(p,d,q)x(P,D,Q,s):
 • p, P: Componentes autoregresivos (AR) - Valores típicos: 0-5
@@ -171,11 +429,11 @@ class ParameterSelectorWindow:
                                    font=('Segoe UI', 11, 'bold'),
                                    bg='#f8fafc', fg='#059669',
                                    relief='ridge', bd=2)
-        order_frame.pack(fill='x', pady=(0, 10))  # Reducido de (0, 15)
+        order_frame.pack(fill='x', pady=(0, 10))
         
         # Grid para los parámetros - ESPACIADO REDUCIDO
         params_frame = tk.Frame(order_frame, bg='#f8fafc')
-        params_frame.pack(fill='x', padx=15, pady=10)  # Reducido de pady=15
+        params_frame.pack(fill='x', padx=15, pady=10)
         
         # Configurar grid
         for i in range(4):
@@ -186,7 +444,7 @@ class ParameterSelectorWindow:
         for i, header in enumerate(headers):
             label = tk.Label(params_frame, text=header, font=('Segoe UI', 10, 'bold'),
                            bg='#f8fafc', fg='#374151')
-            label.grid(row=0, column=i, pady=(0, 6), padx=5)  # Reducido de pady=(0, 10)
+            label.grid(row=0, column=i, pady=(0, 6), padx=5)
         
         # Descripción
         tk.Label(params_frame, text="Descripción:", font=('Segoe UI', 9),
@@ -199,7 +457,7 @@ class ParameterSelectorWindow:
         
         # Controles - AGREGAMOS CALLBACK PARA ACTUALIZACIÓN AUTOMÁTICA
         tk.Label(params_frame, text="Valor:", font=('Segoe UI', 9, 'bold'),
-                bg='#f8fafc', fg='#374151').grid(row=2, column=0, pady=(6, 0), padx=5)  # Reducido de pady=(10, 0)
+                bg='#f8fafc', fg='#374151').grid(row=2, column=0, pady=(6, 0), padx=5)
         
         param_names = ['p', 'd', 'q']
         for i, param in enumerate(param_names):
@@ -207,8 +465,8 @@ class ParameterSelectorWindow:
                                textvariable=self.order_vars[param],
                                font=('Segoe UI', 10), justify='center',
                                bg='white', relief='solid', bd=1,
-                               command=self.update_preview)  # Actualización automática
-            spinbox.grid(row=2, column=i+1, pady=(6, 0), padx=5)  # Reducido de pady=(10, 0)
+                               command=self.update_preview)
+            spinbox.grid(row=2, column=i+1, pady=(6, 0), padx=5)
             # También actualizar cuando se cambie manualmente el valor
             self.order_vars[param].trace('w', lambda *args: self.update_preview())
             
@@ -218,11 +476,11 @@ class ParameterSelectorWindow:
                                       font=('Segoe UI', 11, 'bold'),
                                       bg='#f8fafc', fg='#dc2626',
                                       relief='ridge', bd=2)
-        seasonal_frame.pack(fill='x', pady=(0, 10))  # Reducido de (0, 15)
+        seasonal_frame.pack(fill='x', pady=(0, 10))
         
         # Grid para los parámetros estacionales - ESPACIADO REDUCIDO
         seasonal_params_frame = tk.Frame(seasonal_frame, bg='#f8fafc')
-        seasonal_params_frame.pack(fill='x', padx=15, pady=10)  # Reducido de pady=15
+        seasonal_params_frame.pack(fill='x', padx=15, pady=10)
         
         # Configurar grid
         for i in range(5):
@@ -233,7 +491,7 @@ class ParameterSelectorWindow:
         for i, header in enumerate(headers):
             label = tk.Label(seasonal_params_frame, text=header, font=('Segoe UI', 10, 'bold'),
                            bg='#f8fafc', fg='#374151')
-            label.grid(row=0, column=i, pady=(0, 6), padx=5)  # Reducido de pady=(0, 10)
+            label.grid(row=0, column=i, pady=(0, 6), padx=5)
         
         # Descripción
         tk.Label(seasonal_params_frame, text="Descripción:", font=('Segoe UI', 9),
@@ -246,7 +504,7 @@ class ParameterSelectorWindow:
         
         # Controles - AGREGAMOS CALLBACK PARA ACTUALIZACIÓN AUTOMÁTICA
         tk.Label(seasonal_params_frame, text="Valor:", font=('Segoe UI', 9, 'bold'),
-                bg='#f8fafc', fg='#374151').grid(row=2, column=0, pady=(6, 0), padx=5)  # Reducido de pady=(10, 0)
+                bg='#f8fafc', fg='#374151').grid(row=2, column=0, pady=(6, 0), padx=5)
         
         param_names = ['P', 'D', 'Q']
         max_values = [5, 2, 5]
@@ -255,8 +513,8 @@ class ParameterSelectorWindow:
                                textvariable=self.seasonal_vars[param],
                                font=('Segoe UI', 10), justify='center',
                                bg='white', relief='solid', bd=1,
-                               command=self.update_preview)  # Actualización automática
-            spinbox.grid(row=2, column=i+1, pady=(6, 0), padx=5)  # Reducido de pady=(10, 0)
+                               command=self.update_preview)
+            spinbox.grid(row=2, column=i+1, pady=(6, 0), padx=5)
             # También actualizar cuando se cambie manualmente el valor
             self.seasonal_vars[param].trace('w', lambda *args: self.update_preview())
         
@@ -265,52 +523,96 @@ class ParameterSelectorWindow:
                               textvariable=self.seasonal_vars['s'],
                               font=('Segoe UI', 10), justify='center',
                               bg='white', relief='solid', bd=1,
-                              command=self.update_preview)  # Actualización automática
-        s_spinbox.grid(row=2, column=4, pady=(6, 0), padx=5)  # Reducido de pady=(10, 0)
+                              command=self.update_preview)
+        s_spinbox.grid(row=2, column=4, pady=(6, 0), padx=5)
         # También actualizar cuando se cambie manualmente el valor
         self.seasonal_vars['s'].trace('w', lambda *args: self.update_preview())
         
     def create_presets_section(self, parent):
-        """Crear sección de configuraciones predefinidas - ESPACIADO OPTIMIZADO"""
+        """Crear sección de configuraciones predefinidas - CON PRESETS DINÁMICOS"""
         presets_frame = tk.LabelFrame(parent, text="⚡ Configuraciones Predefinidas", 
                                      font=('Segoe UI', 11, 'bold'),
                                      bg='#f8fafc', fg='#7c3aed',
                                      relief='ridge', bd=2)
-        presets_frame.pack(fill='x', pady=(0, 10))  # Reducido de (0, 15)
+        presets_frame.pack(fill='x', pady=(0, 10))
         
         # Frame para los botones de preset - ESPACIADO REDUCIDO
         buttons_frame = tk.Frame(presets_frame, bg='#f8fafc')
-        buttons_frame.pack(fill='x', padx=15, pady=10)  # Reducido de pady=15
+        buttons_frame.pack(fill='x', padx=15, pady=10)
         
-        # Definir presets
-        presets = [
-            ("Optimizado (Actual)", (4, 0, 0), (1, 0, 0, 8), "Parámetros optimizados actuales"),
-            ("Conservador", (1, 1, 1), (1, 1, 1, 12), "Modelo simple y estable"),
-            ("Agresivo", (3, 1, 2), (2, 1, 1, 12), "Modelo más complejo"),
-            ("Solo Tendencia", (2, 1, 0), (0, 0, 0, 8), "Sin componentes estacionales")
-        ]
+        # DEFINIR PRESETS (DINÁMICOS O ESTÁTICOS)
+        if self.presets_loaded and self.dynamic_presets:
+            # Usar presets dinámicos del bridge
+            presets = self.get_dynamic_presets()
+        else:
+            # Usar presets estáticos originales
+            presets = [
+                ("Optimizado (Actual)", (4, 0, 0), (1, 0, 0, 8), "Parámetros optimizados"),
+                ("Conservador", (1, 1, 1), (1, 1, 1, 12), "Modelo simple y estable"),
+                ("Agresivo", (3, 1, 2), (2, 1, 1, 12), "Modelo más complejo"),
+                ("Solo Tendencia", (2, 1, 0), (0, 0, 0, 8), "Modelo sobre ajustado")
+            ]
         
         # Crear botones de preset en grid 2x2
         for i, (name, order, seasonal, desc) in enumerate(presets):
             row = i // 2
             col = i % 2
             
+            # Color especial para presets dinámicos
+            if self.presets_loaded and name in ['Conservador', 'Solo Tendencia', 'Agresivo']:
+                bg_color = '#dbeafe'  # Azul claro para presets optimizados
+                text_color = '#1e40af'
+            else:
+                bg_color = '#e5e7eb'  # Gris para presets normales
+                text_color = '#374151'
+            
             preset_btn = tk.Button(buttons_frame, text=name,
                                  command=lambda o=order, s=seasonal: self.apply_preset(o, s),
                                  font=('Segoe UI', 9, 'bold'),
-                                 bg='#e5e7eb', fg='#374151',
+                                 bg=bg_color, fg=text_color,
                                  relief='raised', bd=1, cursor='hand2',
                                  width=20, height=2)
-            preset_btn.grid(row=row*2, column=col, padx=10, pady=4, sticky='ew')  # Reducido de pady=5
+            preset_btn.grid(row=row*2, column=col, padx=10, pady=4, sticky='ew')
             
             # Descripción del preset - TEXTO MÁS PEQUEÑO
-            desc_label = tk.Label(buttons_frame, text=desc, font=('Segoe UI', 7),  # Reducido de font=8
+            desc_label = tk.Label(buttons_frame, text=desc, font=('Segoe UI', 7),
                                 bg='#f8fafc', fg='#6b7280')
-            desc_label.grid(row=row*2+1, column=col, padx=10, pady=(0, 6))  # Reducido de pady=(0, 10)
+            desc_label.grid(row=row*2+1, column=col, padx=10, pady=(0, 6))
         
         # Configurar peso de columnas
         buttons_frame.grid_columnconfigure(0, weight=1)
         buttons_frame.grid_columnconfigure(1, weight=1)
+        
+    def get_dynamic_presets(self):
+        """NUEVA FUNCIÓN: Obtener presets dinámicos del bridge"""
+        if not self.dynamic_presets:
+            return []
+        
+        # Extraer parámetros de los modelos del bridge
+        presets = []
+        
+        # Preset "Optimizado" siempre es el mismo
+        presets.append(("Optimizado (Actual)", (4, 0, 0), (1, 0, 0, 8), "Parámetros optimizados"))
+        
+        # Mapear presets dinámicos según especificación:
+        # Top 1 -> Conservador, Top 2 -> Solo Tendencia, Top 3 -> Agresivo
+        preset_mapping = [
+            ("Conservador", "Top #1 del optimizador"),
+            ("Solo Tendencia", "Top #2 del optimizador"), 
+            ("Agresivo", "Top #3 del optimizador")
+        ]
+        
+        for i, (preset_name, desc_suffix) in enumerate(preset_mapping):
+            if preset_name in self.dynamic_presets:
+                model_data = self.dynamic_presets[preset_name]['model']
+                order = tuple(model_data['order'])
+                seasonal_order = tuple(model_data['seasonal_order'])
+                precision = model_data.get('precision_final', 0)
+                
+                description = f"{desc_suffix} (Precisión: {precision:.1f}%)"
+                presets.append((preset_name, order, seasonal_order, description))
+        
+        return presets
         
     def create_validation_section(self, parent):
         """Crear sección de validación de parámetros - SIN BOTÓN REDUNDANTE"""
@@ -318,17 +620,17 @@ class ParameterSelectorWindow:
                                         font=('Segoe UI', 11, 'bold'),
                                         bg='#f8fafc', fg='#ea580c',
                                         relief='ridge', bd=2)
-        validation_frame.pack(fill='x', pady=(0, 10))  # Reducido de (0, 15)
+        validation_frame.pack(fill='x', pady=(0, 10))
         
         # Frame para mostrar la configuración actual - ESPACIADO REDUCIDO
         preview_frame = tk.Frame(validation_frame, bg='#f8fafc')
-        preview_frame.pack(fill='x', padx=15, pady=10)  # Reducido de pady=15
+        preview_frame.pack(fill='x', padx=15, pady=10)
         
         # Label para mostrar la configuración - MÁS PROMINENTE
         self.config_preview_label = tk.Label(preview_frame,
-                                           font=('Segoe UI', 14, 'bold'),  # Aumentado de 12 a 14
+                                           font=('Segoe UI', 14, 'bold'),
                                            bg='#ffffff', fg='#1e40af',
-                                           relief='solid', bd=2, padx=20, pady=12)  # Aumentado padding
+                                           relief='solid', bd=2, padx=20, pady=12)
         self.config_preview_label.pack(fill='x')
         
         # Texto informativo sobre actualización automática
@@ -345,18 +647,18 @@ class ParameterSelectorWindow:
         """Crear botones de acción - DISEÑO ORIGINAL CON ESPACIADO OPTIMIZADO"""
         # Separador visual - MÁS DELGADO
         separator = tk.Frame(parent, bg='#d1d5db', height=2)
-        separator.pack(fill='x', pady=(10, 8))  # Reducido de pady=(15, 10)
+        separator.pack(fill='x', pady=(10, 8))
         
         # Texto de instrucción - MÁS COMPACTO
         instruction_label = tk.Label(parent,
                                    text="👇 SELECCIONE UNA ACCIÓN PARA CONTINUAR 👇",
-                                   font=('Segoe UI', 11, 'bold'),  # Reducido de font=12
+                                   font=('Segoe UI', 11, 'bold'),
                                    bg='#dbeafe', fg='#1e40af',
-                                   relief='solid', bd=2, padx=10, pady=6)  # Reducido de pady=8
-        instruction_label.pack(fill='x', pady=(0, 10))  # Reducido de pady=(0, 15)
+                                   relief='solid', bd=2, padx=10, pady=6)
+        instruction_label.pack(fill='x', pady=(0, 10))
         
         buttons_frame = tk.Frame(parent, bg='#f8fafc')
-        buttons_frame.pack(fill='x', pady=(8, 0))  # Reducido de pady=(10, 0)
+        buttons_frame.pack(fill='x', pady=(8, 0))
         
         # Frame interno para centrar los botones
         center_frame = tk.Frame(buttons_frame, bg='#f8fafc')
@@ -365,21 +667,21 @@ class ParameterSelectorWindow:
         # Botón Cancelar - TAMAÑO LIGERAMENTE REDUCIDO
         cancel_btn = tk.Button(center_frame, text="❌ CANCELAR",
                               command=self.on_cancel,
-                              font=('Segoe UI', 11, 'bold'),  # Reducido de font=12
+                              font=('Segoe UI', 11, 'bold'),
                               bg='#ef4444', fg='white',
                               relief='raised', bd=3, cursor='hand2',
-                              width=16, height=2,  # Reducido de width=18
+                              width=16, height=2,
                               activebackground='#dc2626',
                               activeforeground='white')
-        cancel_btn.pack(side='left', padx=(0, 12))  # Reducido de padx=(0, 15)
+        cancel_btn.pack(side='left', padx=(0, 12))
         
         # Botón Confirmar y Ejecutar - TAMAÑO LIGERAMENTE REDUCIDO
         confirm_btn = tk.Button(center_frame, text="✅ CONFIRMAR Y EJECUTAR ANÁLISIS",
                                command=self.on_confirm,
-                               font=('Segoe UI', 11, 'bold'),  # Reducido de font=12
+                               font=('Segoe UI', 11, 'bold'),
                                bg='#059669', fg='white',
                                relief='raised', bd=3, cursor='hand2',
-                               width=32, height=2,  # Reducido de width=35
+                               width=32, height=2,
                                activebackground='#047857',
                                activeforeground='white')
         confirm_btn.pack(side='right')
@@ -412,9 +714,9 @@ class ParameterSelectorWindow:
         # Mostrar atajos de teclado - MÁS COMPACTO
         shortcuts_label = tk.Label(buttons_frame,
                                   text="💡 Atajos de Teclado: Enter = Confirmar | Escape = Cancelar",
-                                  font=('Segoe UI', 9, 'italic'),  # Reducido de font=10
+                                  font=('Segoe UI', 9, 'italic'),
                                   bg='#f8fafc', fg='#6b7280')
-        shortcuts_label.pack(pady=(6, 0))  # Reducido de pady=(10, 0)
+        shortcuts_label.pack(pady=(6, 0))
         
     def add_hover_effects(self, button, hover_color, normal_color):
         """Agregar efectos hover a botones"""

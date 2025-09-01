@@ -1,4 +1,4 @@
-# backend/Parametro.py - Comunicación con Frontend
+# backend/Parametro.py - Comunicación con Frontend - VERSIÓN MODIFICADA CON BRIDGE
 import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
@@ -12,6 +12,15 @@ import argparse
 import json
 import os
 import sys
+
+# IMPORTAR EL BRIDGE DE COMUNICACIÓN
+try:
+    from backend.parametros_bridge import save_top_models_to_bridge, clear_bridge_data
+    BRIDGE_AVAILABLE = True
+    print("✓ Bridge de parámetros cargado correctamente")
+except ImportError:
+    BRIDGE_AVAILABLE = False
+    print("⚠ Bridge de parámetros no disponible - funcionalidad limitada")
 
 # Variables globales para la interfaz
 PROGRESS_PERCENTAGE = 0
@@ -177,6 +186,51 @@ def actualizar_top_3_modelos(order, seasonal_order, metrics):
     if len(TOP_3_MODELS) > 3:
         TOP_3_MODELS = TOP_3_MODELS[:3]
 
+def finalizar_analisis_y_guardar_bridge():
+    """NUEVA FUNCIÓN: Finalizar análisis y guardar en bridge para selectorOrder.py"""
+    global TOP_3_MODELS
+    
+    print("\n" + "="*80)
+    print("FINALIZANDO ANÁLISIS Y ACTUALIZANDO BRIDGE DE PARÁMETROS")
+    print("="*80)
+    
+    if len(TOP_3_MODELS) >= 3:
+        print(f"✓ Se encontraron {len(TOP_3_MODELS)} modelos para actualizar presets")
+        
+        # Mostrar resumen de lo que se va a guardar
+        mapping_info = [
+            ("Conservador (Top #1)", TOP_3_MODELS[0]),
+            ("Solo Tendencia (Top #2)", TOP_3_MODELS[1]), 
+            ("Agresivo (Top #3)", TOP_3_MODELS[2])
+        ]
+        
+        print("\nMAPEO DE MODELOS A PRESETS:")
+        for preset_name, model in mapping_info:
+            precision = model['precision_final']
+            order = model['order']
+            seasonal_order = model['seasonal_order']
+            print(f"  {preset_name}:")
+            print(f"    Parámetros: order={order}, seasonal_order={seasonal_order}")
+            print(f"    Precisión: {precision:.1f}% | RMSE: {model['rmse']:.4f}")
+        
+        # Intentar guardar en bridge si está disponible
+        if BRIDGE_AVAILABLE:
+            try:
+                success = save_top_models_to_bridge(TOP_3_MODELS)
+                if success:
+                    print("\n✓ TOP MODELS GUARDADOS EN BRIDGE CORRECTAMENTE")
+                    print("  Los presets del selector de parámetros se actualizarán automáticamente")
+                else:
+                    print("\n⚠ Error guardando en bridge - los presets no se actualizarán")
+            except Exception as e:
+                print(f"\n✗ Error guardando en bridge: {e}")
+        else:
+            print("\n⚠ Bridge no disponible - los presets no se actualizarán automáticamente")
+    else:
+        print(f"⚠ Insuficientes modelos para bridge: {len(TOP_3_MODELS)} (se necesitan 3)")
+    
+    print("="*80)
+
 class AutoArimaWithMultipleMetrics:
     """Wrapper personalizado para auto_arima con comunicación frontend"""
     
@@ -279,9 +333,14 @@ class AutoArimaWithMultipleMetrics:
         return self.mejor_params_composite
 
 def analizar_saidi(file_path, progress_file=None):
-    """Función principal de análisis SAIDI"""
+    """Función principal de análisis SAIDI - MODIFICADA CON BRIDGE"""
     try:
         print(f"Iniciando análisis SAIDI con archivo: {file_path}")
+        
+        # LIMPIAR BRIDGE AL INICIO
+        if BRIDGE_AVAILABLE:
+            clear_bridge_data()
+            print("✓ Bridge limpiado para nuevo análisis")
         
         if progress_file:
             update_progress(progress_file, 5, "Cargando datos del archivo Excel...", "")
@@ -336,6 +395,14 @@ def analizar_saidi(file_path, progress_file=None):
         from itertools import product
         
         # Rangos de parámetros (reducidos para testing, expandir en producción)
+        #p_range = range(0, 2)   
+        #d_range = range(0, 2)  
+        #q_range = range(0, 2)   
+        #P_range = range(0, 2)   
+        #D_range = range(0, 2)   
+        #Q_range = range(0, 2)   
+        #s_range = range(11, 12) 
+
         p_range = range(0, 5)   
         d_range = range(0, 4)  
         q_range = range(0, 4)   
@@ -379,10 +446,13 @@ def analizar_saidi(file_path, progress_file=None):
                         continue
         
         if progress_file:
-            update_progress(progress_file, 90, "Análisis completado, generando resultados finales", 
-                          "Preparando resumen de resultados...")
+            update_progress(progress_file, 85, "Análisis completado, finalizando y guardando resultados", 
+                          "Preparando bridge de parámetros...")
         
         mejor_params_final = evaluador.get_resumen_final()
+        
+        # *** LLAMAR A LA NUEVA FUNCIÓN DE BRIDGE ***
+        finalizar_analisis_y_guardar_bridge()
 
         # Usar auto_arima como respaldo si es necesario
         if mejor_modelo_global is None:

@@ -255,7 +255,7 @@ def generar_grafica_validacion(file_path, order=(4, 0, 0), seasonal_order=(1, 0,
                         f"MAPE: {metricas['mape']:.1f}% | R²: {metricas['r2_score']:.3f}\n"
                         f"Precisión: {metricas['precision_final']:.1f}%")
         
-        plt.text(0.01, 0.35, info_metricas, transform=plt.gca().transAxes, 
+        plt.text(0.01, 0.22, info_metricas, transform=plt.gca().transAxes, 
                 fontsize=10, verticalalignment='top', 
                 bbox=dict(boxstyle='round,pad=0.5', facecolor='lightblue', alpha=0.9, edgecolor='navy'))
 
@@ -264,7 +264,7 @@ def generar_grafica_validacion(file_path, order=(4, 0, 0), seasonal_order=(1, 0,
                            f"MAPE: {metricas['precision_mape']:.1f}% | R²: {metricas['precision_r2']:.1f}%\n"
                            f"RMSE: {metricas['precision_rmse']:.1f}% | Formula: 0.4+0.4+0.2")
         
-        plt.text(0.01, 0.18, info_componentes, transform=plt.gca().transAxes, 
+        plt.text(0.01, 0.09, info_componentes, transform=plt.gca().transAxes, 
                 fontsize=9, verticalalignment='top',
                 bbox=dict(boxstyle='round,pad=0.4', facecolor='wheat', alpha=0.9, edgecolor='orange'))
 
