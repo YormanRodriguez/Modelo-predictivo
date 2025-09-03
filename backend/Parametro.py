@@ -1,4 +1,4 @@
-# backend/Parametro.py - Comunicación con Frontend - VERSIÓN MODIFICADA CON BRIDGE
+# backend/Parametro.py - Comunicación con Frontend - VERSIÓN CON CANCELACIÓN REAL
 import warnings
 warnings.filterwarnings('ignore')
 import pandas as pd
@@ -12,15 +12,31 @@ import argparse
 import json
 import os
 import sys
+import signal
+import threading
 
 # IMPORTAR EL BRIDGE DE COMUNICACIÓN
 try:
-    from backend.parametros_bridge import save_top_models_to_bridge, clear_bridge_data
+    # Primero intentar importar desde el mismo directorio (cuando se ejecuta desde backend/)
+    from parametros_bridge import save_top_models_to_bridge, clear_bridge_data
     BRIDGE_AVAILABLE = True
     print("✓ Bridge de parámetros cargado correctamente")
 except ImportError:
-    BRIDGE_AVAILABLE = False
-    print("⚠ Bridge de parámetros no disponible - funcionalidad limitada")
+    try:
+        # Fallback: cuando se ejecuta desde Interfaz/, agregar backend al path
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if not current_dir.endswith('backend'):
+            # Estamos ejecutando desde otro directorio, buscar backend/
+            backend_path = os.path.join(os.path.dirname(current_dir), 'backend')
+            if os.path.exists(backend_path):
+                sys.path.insert(0, backend_path)
+        
+        from parametros_bridge import save_top_models_to_bridge, clear_bridge_data
+        BRIDGE_AVAILABLE = True
+        print("✓ Bridge de parámetros cargado correctamente (fallback)")
+    except ImportError as e:
+        BRIDGE_AVAILABLE = False
+        print(f"⚠ Bridge de parámetros no disponible: {e}")
 
 # Variables globales para la interfaz
 PROGRESS_PERCENTAGE = 0
@@ -28,9 +44,65 @@ CURRENT_MODEL = ""
 STATUS_MESSAGE = ""
 TOP_3_MODELS = []
 
+# NUEVA VARIABLE GLOBAL: Control de cancelación
+PROCESO_CANCELADO = False
+
+def check_cancellation(progress_file):
+    """NUEVA FUNCIÓN: Verificar si el proceso fue cancelado"""
+    global PROCESO_CANCELADO
+    
+    if PROCESO_CANCELADO:
+        return True
+        
+    if progress_file and os.path.dirname(progress_file):
+        try:
+            # Verificar si existe el archivo de cancelación
+            cancel_file = progress_file.replace('.json', '_cancel.json')
+            if os.path.exists(cancel_file):
+                print("🚫 CANCELACIÓN DETECTADA - Deteniendo proceso...")
+                PROCESO_CANCELADO = True
+                return True
+        except Exception as e:
+            print(f"Error verificando cancelación: {e}")
+    
+    return False
+
+def create_cancellation_file(progress_file):
+    """NUEVA FUNCIÓN: Crear archivo de cancelación"""
+    if progress_file:
+        try:
+            cancel_file = progress_file.replace('.json', '_cancel.json')
+            with open(cancel_file, 'w') as f:
+                f.write(json.dumps({
+                    'cancelled_at': pd.Timestamp.now().isoformat(),
+                    'pid': os.getpid()
+                }))
+            print(f"✓ Archivo de cancelación creado: {cancel_file}")
+            return True
+        except Exception as e:
+            print(f"Error creando archivo de cancelación: {e}")
+            return False
+    return False
+
+def cleanup_cancellation_files(progress_file):
+    """NUEVA FUNCIÓN: Limpiar archivos de cancelación"""
+    if progress_file:
+        try:
+            cancel_file = progress_file.replace('.json', '_cancel.json')
+            if os.path.exists(cancel_file):
+                os.remove(cancel_file)
+                print(f"✓ Archivo de cancelación eliminado: {cancel_file}")
+        except Exception as e:
+            print(f"Error eliminando archivo de cancelación: {e}")
+
 def update_progress(progress_file, progress, status, current_model=""):
-    """Actualizar el archivo de progreso para comunicación con frontend"""
-    global PROGRESS_PERCENTAGE, CURRENT_MODEL, STATUS_MESSAGE
+    """Actualizar el archivo de progreso para comunicación con frontend - MODIFICADO"""
+    global PROGRESS_PERCENTAGE, CURRENT_MODEL, STATUS_MESSAGE, PROCESO_CANCELADO
+    
+    # VERIFICAR CANCELACIÓN ANTES DE ACTUALIZAR
+    if check_cancellation(progress_file):
+        print("🚫 Proceso cancelado - interrumpiendo actualización de progreso")
+        return False
     
     # Actualizar variables globales
     PROGRESS_PERCENTAGE = progress
@@ -42,19 +114,15 @@ def update_progress(progress_file, progress, status, current_model=""):
             # Asegurar que el directorio existe
             os.makedirs(os.path.dirname(progress_file), exist_ok=True)
             
-            # Verificar si se solicitó cancelación
-            cancel_file = progress_file.replace('.json', '_cancel.json')
-            if os.path.exists(cancel_file):
-                print("Cancelación detectada por el usuario")
-                return False  # Señal de cancelación
-            
             # Escribir archivo de progreso
             progress_data = {
                 'progress': progress,
                 'status': status,
                 'current_model': current_model,
                 'top_models': TOP_3_MODELS,
-                'timestamp': pd.Timestamp.now().isoformat()
+                'timestamp': pd.Timestamp.now().isoformat(),
+                'pid': os.getpid(),  # NUEVO: Incluir PID del proceso
+                'cancelled': PROCESO_CANCELADO  # NUEVO: Estado de cancelación
             }
             
             with open(progress_file, 'w', encoding='utf-8') as f:
@@ -66,6 +134,51 @@ def update_progress(progress_file, progress, status, current_model=""):
             print(f"Error actualizando progreso: {e}")
             return True
     return True
+
+def handle_graceful_shutdown(progress_file):
+    """NUEVA FUNCIÓN: Manejar cierre elegante del proceso"""
+    global PROCESO_CANCELADO
+    
+    print("\n" + "="*60)
+    print("🚫 PROCESO CANCELADO POR EL USUARIO")
+    print("="*60)
+    print(f"⏹️  Iteraciones completadas antes de cancelar: {getattr(handle_graceful_shutdown, 'iteraciones', 0)}")
+    print(f"📊 Modelos evaluados: {len(TOP_3_MODELS)}")
+    
+    if TOP_3_MODELS:
+        print(f"🏆 Mejor modelo encontrado hasta ahora:")
+        best = TOP_3_MODELS[0]
+        print(f"   Precisión: {best['precision_final']:.1f}%")
+        print(f"   Parámetros: order={best['order']}, seasonal_order={best['seasonal_order']}")
+    
+    # Actualizar progreso final
+    if progress_file:
+        update_progress(progress_file, PROGRESS_PERCENTAGE, 
+                       "❌ Proceso cancelado por el usuario", 
+                       "Cancelado - limpiando recursos...")
+    
+    # Limpiar archivos de cancelación
+    cleanup_cancellation_files(progress_file)
+    
+    print("🔄 Recursos limpiados correctamente")
+    print("="*60)
+    
+    PROCESO_CANCELADO = True
+    sys.exit(130)  # Código de salida estándar para cancelación por usuario
+
+def setup_signal_handlers(progress_file):
+    """NUEVA FUNCIÓN: Configurar manejadores de señales para cancelación elegante"""
+    def signal_handler(signum, frame):
+        print(f"\n⚠️  Señal {signum} recibida...")
+        handle_graceful_shutdown(progress_file)
+    
+    # Configurar manejadores para diferentes señales
+    signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+    signal.signal(signal.SIGTERM, signal_handler)  # Terminación
+    
+    # En Windows, también manejar SIGBREAK
+    if hasattr(signal, 'SIGBREAK'):
+        signal.signal(signal.SIGBREAK, signal_handler)
 
 def cargar_excel():
     """Abrir un cuadro de diálogo para seleccionar el archivo Excel"""
@@ -81,7 +194,13 @@ def cargar_excel():
     return file_path
 
 def evaluar_modelo_completo(serie, order, seasonal_order):
-    """Evalúa un modelo SARIMAX con múltiples métricas"""
+    """Evalúa un modelo SARIMAX con múltiples métricas - CON VERIFICACIÓN DE CANCELACIÓN"""
+    global PROCESO_CANCELADO
+    
+    # Verificar cancelación antes de evaluar modelo
+    if PROCESO_CANCELADO:
+        raise InterruptedError("Proceso cancelado por el usuario")
+    
     try:
         if len(serie) >= 60:
             pct_validacion = 0.30
@@ -94,6 +213,10 @@ def evaluar_modelo_completo(serie, order, seasonal_order):
         train_data = serie[:-n_test]
         test_data = serie[-n_test:]
         
+        # Verificar cancelación antes del ajuste del modelo
+        if PROCESO_CANCELADO:
+            raise InterruptedError("Proceso cancelado por el usuario")
+        
         model = SARIMAX(
             train_data,
             order=order,
@@ -102,6 +225,10 @@ def evaluar_modelo_completo(serie, order, seasonal_order):
             enforce_invertibility=False
         )
         results = model.fit(disp=False)
+        
+        # Verificar cancelación después del ajuste
+        if PROCESO_CANCELADO:
+            raise InterruptedError("Proceso cancelado por el usuario")
         
         pred = results.get_forecast(steps=n_test)
         pred_mean = pred.predicted_mean
@@ -148,7 +275,14 @@ def evaluar_modelo_completo(serie, order, seasonal_order):
             'pct_validacion': pct_validacion
         }
         
+    except InterruptedError:
+        # Re-lanzar la excepción de cancelación
+        raise
     except Exception as e:
+        # Verificar si fue una cancelación disfrazada como otra excepción
+        if PROCESO_CANCELADO:
+            raise InterruptedError("Proceso cancelado por el usuario")
+            
         return {
             'rmse': float('inf'),
             'mae': float('inf'),
@@ -232,7 +366,7 @@ def finalizar_analisis_y_guardar_bridge():
     print("="*80)
 
 class AutoArimaWithMultipleMetrics:
-    """Wrapper personalizado para auto_arima con comunicación frontend"""
+    """Wrapper personalizado para auto_arima con comunicación frontend - CON CANCELACIÓN"""
     
     def __init__(self, serie, progress_file=None):
         self.serie = serie
@@ -253,7 +387,15 @@ class AutoArimaWithMultipleMetrics:
         print(f"Total de combinaciones a evaluar: {total}")
         
     def evaluar_y_mostrar(self, order, seasonal_order):
-        """Evalúa un modelo y actualiza progreso para la interfaz"""
+        """Evalúa un modelo y actualiza progreso para la interfaz - CON CANCELACIÓN"""
+        global PROCESO_CANCELADO
+        
+        # VERIFICAR CANCELACIÓN AL INICIO DE CADA ITERACIÓN
+        if check_cancellation(self.progress_file):
+            print(f"🚫 Cancelación detectada en iteración {self.iteracion + 1}")
+            handle_graceful_shutdown.iteraciones = self.iteracion  # Guardar contador
+            handle_graceful_shutdown(self.progress_file)
+            
         self.iteracion += 1
         
         progress_percentage = (self.iteracion / self.total_iteraciones) * 100 if self.total_iteraciones > 0 else 0
@@ -262,41 +404,61 @@ class AutoArimaWithMultipleMetrics:
             model_info = f"order={order}, seasonal_order={seasonal_order}"
             status = f"Evaluando modelo {self.iteracion} de {self.total_iteraciones} ({progress_percentage:.1f}%)"
             
-            # Verificar cancelación
+            # Verificar cancelación durante actualización de progreso
             if not update_progress(self.progress_file, progress_percentage, status, model_info):
-                print("Proceso cancelado por el usuario")
-                sys.exit(0)
+                print(f"🚫 Cancelación durante actualización de progreso - iteración {self.iteracion}")
+                handle_graceful_shutdown.iteraciones = self.iteracion
+                handle_graceful_shutdown(self.progress_file)
         
-        metrics = evaluar_modelo_completo(self.serie, order, seasonal_order)
-        actualizar_top_3_modelos(order, seasonal_order, metrics)
-        
-        print(f"[{progress_percentage:5.1f}%] Modelo {self.iteracion:3d}/{self.total_iteraciones}: "
-              f"order={order}, seasonal_order={seasonal_order}")
-        print(f"         RMSE={metrics['rmse']:.4f}, Precisión={metrics['precision_final']:.1f}%, "
-              f"MAPE={metrics['mape']:.1f}%, R²={metrics['r2_score']:.3f}")
-        
-        self.resultados.append({
-            'order': order,
-            'seasonal_order': seasonal_order,
-            'metrics': metrics
-        })
-        
-        if metrics['rmse'] < self.mejor_rmse:
-            self.mejor_rmse = metrics['rmse']
-            self.mejor_params_rmse = (order, seasonal_order)
-            print(f"         *** NUEVO MEJOR RMSE: {metrics['rmse']:.4f} ***")
-        
-        if metrics['composite_score'] < self.mejor_composite:
-            self.mejor_composite = metrics['composite_score']
-            self.mejor_params_composite = (order, seasonal_order)
-            print(f"         *** NUEVO MEJOR SCORE COMPUESTO: {metrics['composite_score']:.4f} ***")
-        
-        if metrics['precision_final'] > self.mejor_precision:
-            self.mejor_precision = metrics['precision_final']
-            self.mejor_params_precision = (order, seasonal_order)
-            print(f"         *** NUEVA MEJOR PRECISIÓN: {metrics['precision_final']:.1f}% ***")
-        
-        return metrics['rmse']
+        try:
+            # VERIFICAR CANCELACIÓN ANTES DE EVALUAR MODELO
+            if PROCESO_CANCELADO:
+                handle_graceful_shutdown.iteraciones = self.iteracion
+                handle_graceful_shutdown(self.progress_file)
+            
+            metrics = evaluar_modelo_completo(self.serie, order, seasonal_order)
+            actualizar_top_3_modelos(order, seasonal_order, metrics)
+            
+            print(f"[{progress_percentage:5.1f}%] Modelo {self.iteracion:3d}/{self.total_iteraciones}: "
+                  f"order={order}, seasonal_order={seasonal_order}")
+            print(f"         RMSE={metrics['rmse']:.4f}, Precisión={metrics['precision_final']:.1f}%, "
+                  f"MAPE={metrics['mape']:.1f}%, R²={metrics['r2_score']:.3f}")
+            
+            self.resultados.append({
+                'order': order,
+                'seasonal_order': seasonal_order,
+                'metrics': metrics
+            })
+            
+            if metrics['rmse'] < self.mejor_rmse:
+                self.mejor_rmse = metrics['rmse']
+                self.mejor_params_rmse = (order, seasonal_order)
+                print(f"         *** NUEVO MEJOR RMSE: {metrics['rmse']:.4f} ***")
+            
+            if metrics['composite_score'] < self.mejor_composite:
+                self.mejor_composite = metrics['composite_score']
+                self.mejor_params_composite = (order, seasonal_order)
+                print(f"         *** NUEVO MEJOR SCORE COMPUESTO: {metrics['composite_score']:.4f} ***")
+            
+            if metrics['precision_final'] > self.mejor_precision:
+                self.mejor_precision = metrics['precision_final']
+                self.mejor_params_precision = (order, seasonal_order)
+                print(f"         *** NUEVA MEJOR PRECISIÓN: {metrics['precision_final']:.1f}% ***")
+            
+            return metrics['rmse']
+            
+        except InterruptedError:
+            # Manejar cancelación elegante
+            print(f"🚫 Proceso interrumpido en iteración {self.iteracion}")
+            handle_graceful_shutdown.iteraciones = self.iteracion
+            handle_graceful_shutdown(self.progress_file)
+        except Exception as e:
+            if PROCESO_CANCELADO:
+                handle_graceful_shutdown.iteraciones = self.iteracion
+                handle_graceful_shutdown(self.progress_file)
+            else:
+                print(f"⚠️  Error en iteración {self.iteracion}: {e}")
+                return float('inf')
     
     def get_resumen_final(self):
         """Proporciona un resumen final con los mejores modelos"""
@@ -333,8 +495,16 @@ class AutoArimaWithMultipleMetrics:
         return self.mejor_params_composite
 
 def analizar_saidi(file_path, progress_file=None):
-    """Función principal de análisis SAIDI - MODIFICADA CON BRIDGE"""
+    """Función principal de análisis SAIDI - MODIFICADA CON CANCELACIÓN"""
+    global PROCESO_CANCELADO
+    
     try:
+        # CONFIGURAR MANEJADORES DE SEÑALES PARA CANCELACIÓN
+        setup_signal_handlers(progress_file)
+        
+        # LIMPIAR ARCHIVOS DE CANCELACIÓN PREVIOS
+        cleanup_cancellation_files(progress_file)
+        
         print(f"Iniciando análisis SAIDI con archivo: {file_path}")
         
         # LIMPIAR BRIDGE AL INICIO
@@ -345,9 +515,17 @@ def analizar_saidi(file_path, progress_file=None):
         if progress_file:
             update_progress(progress_file, 5, "Cargando datos del archivo Excel...", "")
         
+        # Verificar cancelación
+        if check_cancellation(progress_file):
+            handle_graceful_shutdown(progress_file)
+        
         # Cargar datos
         df = pd.read_excel(file_path, sheet_name="Hoja1")
         print("Columnas encontradas:", df.columns.tolist())
+
+        # Verificar cancelación
+        if check_cancellation(progress_file):
+            handle_graceful_shutdown(progress_file)
 
         # Detectar columna de fecha
         if "Fecha" in df.columns:
@@ -369,6 +547,10 @@ def analizar_saidi(file_path, progress_file=None):
         if progress_file:
             update_progress(progress_file, 10, "Datos cargados correctamente. Preparando análisis...", "")
 
+        # Verificar cancelación
+        if check_cancellation(progress_file):
+            handle_graceful_shutdown(progress_file)
+
         # Identificar meses faltantes
         faltantes = df[df[col_saidi].isna()]
         historico = df[df[col_saidi].notna()]
@@ -386,6 +568,10 @@ def analizar_saidi(file_path, progress_file=None):
         # Crear evaluador personalizado
         evaluador = AutoArimaWithMultipleMetrics(historico[col_saidi], progress_file)
 
+        # Verificar cancelación antes de iniciar búsqueda exhaustiva
+        if check_cancellation(progress_file):
+            handle_graceful_shutdown(progress_file)
+
         # Búsqueda exhaustiva de parámetros
         print("\n" + "="*80)
         print("BÚSQUEDA EXHAUSTIVA DE PARÁMETROS ÓPTIMOS")
@@ -394,15 +580,7 @@ def analizar_saidi(file_path, progress_file=None):
         
         from itertools import product
         
-        # Rangos de parámetros (reducidos para testing, expandir en producción)
-        #p_range = range(0, 2)   
-        #d_range = range(0, 2)  
-        #q_range = range(0, 2)   
-        #P_range = range(0, 2)   
-        #D_range = range(0, 2)   
-        #Q_range = range(0, 2)   
-        #s_range = range(11, 12) 
-
+        # Rangos de parámetros
         p_range = range(0, 5)   
         d_range = range(0, 4)  
         q_range = range(0, 4)   
@@ -420,30 +598,57 @@ def analizar_saidi(file_path, progress_file=None):
             update_progress(progress_file, 15, f"Iniciando evaluación de {total_combinations} combinaciones", 
                           "Preparando búsqueda exhaustiva...")
         
-        # Evaluar combinaciones
-        for p, d, q in product(p_range, d_range, q_range):
-            for P, D, Q in product(P_range, D_range, Q_range):
-                for s in s_range:
-                    order = (p, d, q)
-                    seasonal_order = (P, D, Q, s)
-
-                    rmse = evaluador.evaluar_y_mostrar(order, seasonal_order)
-                    
-                    try:
-                        temp_model = SARIMAX(
-                            historico[col_saidi],
-                            order=order,
-                            seasonal_order=seasonal_order,
-                            enforce_stationarity=False,
-                            enforce_invertibility=False
-                        )
-                        temp_results = temp_model.fit(disp=False)
+        # Verificar cancelación antes del bucle principal
+        if check_cancellation(progress_file):
+            handle_graceful_shutdown(progress_file)
+        
+        # Evaluar combinaciones - CON VERIFICACIÓN DE CANCELACIÓN EN CADA ITERACIÓN
+        try:
+            for p, d, q in product(p_range, d_range, q_range):
+                for P, D, Q in product(P_range, D_range, Q_range):
+                    for s in s_range:
+                        # VERIFICACIÓN CRÍTICA: Cancelación en cada iteración del bucle
+                        if check_cancellation(progress_file):
+                            print("🚫 Cancelación detectada en bucle principal")
+                            handle_graceful_shutdown(progress_file)
                         
-                        if order == evaluador.mejor_params_composite[0] and seasonal_order == evaluador.mejor_params_composite[1]:
-                            mejor_modelo_global = temp_results
+                        order = (p, d, q)
+                        seasonal_order = (P, D, Q, s)
+
+                        rmse = evaluador.evaluar_y_mostrar(order, seasonal_order)
+                        
+                        try:
+                            # Verificar cancelación antes de crear modelo temporal
+                            if PROCESO_CANCELADO or check_cancellation(progress_file):
+                                handle_graceful_shutdown(progress_file)
                             
-                    except:
-                        continue
+                            temp_model = SARIMAX(
+                                historico[col_saidi],
+                                order=order,
+                                seasonal_order=seasonal_order,
+                                enforce_stationarity=False,
+                                enforce_invertibility=False
+                            )
+                            temp_results = temp_model.fit(disp=False)
+                            
+                            if order == evaluador.mejor_params_composite[0] and seasonal_order == evaluador.mejor_params_composite[1]:
+                                mejor_modelo_global = temp_results
+                                
+                        except Exception as e:
+                            if PROCESO_CANCELADO:
+                                handle_graceful_shutdown(progress_file)
+                            continue
+        
+        except KeyboardInterrupt:
+            print("🚫 Interrupción por teclado (Ctrl+C)")
+            handle_graceful_shutdown(progress_file)
+        except InterruptedError:
+            print("🚫 Proceso interrumpido")
+            handle_graceful_shutdown(progress_file)
+        
+        # Verificar cancelación antes de finalizar
+        if check_cancellation(progress_file):
+            handle_graceful_shutdown(progress_file)
         
         if progress_file:
             update_progress(progress_file, 85, "Análisis completado, finalizando y guardando resultados", 
@@ -460,6 +665,10 @@ def analizar_saidi(file_path, progress_file=None):
             if progress_file:
                 update_progress(progress_file, 95, "Usando auto_arima como respaldo", 
                               "Generando modelo final...")
+            
+            # Verificar cancelación antes de auto_arima
+            if check_cancellation(progress_file):
+                handle_graceful_shutdown(progress_file)
             
             auto_model = auto_arima(
                 historico[col_saidi],
@@ -495,6 +704,10 @@ def analizar_saidi(file_path, progress_file=None):
             update_progress(progress_file, 98, "Generando predicciones finales", 
                           f"Modelo: order={order}, seasonal_order={seasonal_order}")
 
+        # Verificar cancelación antes de generar predicciones
+        if check_cancellation(progress_file):
+            handle_graceful_shutdown(progress_file)
+
         # Generar predicciones
         pred = results.get_prediction(start=faltantes.index[0], end=faltantes.index[-1])
         pred_mean = pred.predicted_mean
@@ -523,45 +736,81 @@ def analizar_saidi(file_path, progress_file=None):
             update_progress(progress_file, 100, final_status, 
                           f"Finalizado - {len(TOP_3_MODELS)} modelos evaluados")
 
+    except KeyboardInterrupt:
+        print("🚫 Proceso cancelado por el usuario (Ctrl+C)")
+        handle_graceful_shutdown(progress_file)
+    except InterruptedError:
+        print("🚫 Proceso interrumpido por cancelación")
+        handle_graceful_shutdown(progress_file)
     except Exception as e:
-        error_msg = f"Error durante el análisis: {str(e)}"
-        print(error_msg)
-        if progress_file:
-            update_progress(progress_file, 0, f"Error: {error_msg}", "")
-        raise
+        # Verificar si la excepción fue debido a cancelación
+        if PROCESO_CANCELADO:
+            handle_graceful_shutdown(progress_file)
+        else:
+            error_msg = f"Error durante el análisis: {str(e)}"
+            print(error_msg)
+            if progress_file:
+                update_progress(progress_file, 0, f"Error: {error_msg}", "")
+            raise
 
 def main():
     """Función principal con soporte para argumentos de línea de comandos"""
+    global PROCESO_CANCELADO
+    
     parser = argparse.ArgumentParser(description='Análisis SAIDI con optimización de parámetros')
     parser.add_argument('--file', type=str, help='Ruta del archivo Excel')
     parser.add_argument('--progress', type=str, help='Archivo de progreso para comunicación con frontend')
     
     args = parser.parse_args()
     
-    # Verificar argumentos
-    if args.file:
-        if not os.path.exists(args.file):
-            print(f"Error: El archivo {args.file} no existe.")
-            sys.exit(1)
-        file_path = args.file
-    else:
-        # Usar selector de archivos si no se proporciona archivo
-        file_path = cargar_excel()
-    
-    if file_path:
-        print(f"Iniciando análisis con archivo: {file_path}")
-        if args.progress:
-            print(f"Archivo de progreso: {args.progress}")
+    try:
+        # Verificar argumentos
+        if args.file:
+            if not os.path.exists(args.file):
+                print(f"Error: El archivo {args.file} no existe.")
+                sys.exit(1)
+            file_path = args.file
+        else:
+            # Usar selector de archivos si no se proporciona archivo
+            file_path = cargar_excel()
         
-        try:
-            analizar_saidi(file_path, args.progress)
-            print("Análisis completado exitosamente.")
-        except Exception as e:
-            print(f"Error durante el análisis: {e}")
+        if file_path:
+            print(f"Iniciando análisis con archivo: {file_path}")
+            if args.progress:
+                print(f"Archivo de progreso: {args.progress}")
+            
+            # Limpiar archivos de cancelación previos al inicio
+            cleanup_cancellation_files(args.progress)
+            
+            try:
+                analizar_saidi(file_path, args.progress)
+                if not PROCESO_CANCELADO:
+                    print("✅ Análisis completado exitosamente.")
+                    # Limpiar archivos de cancelación al completar exitosamente
+                    cleanup_cancellation_files(args.progress)
+                else:
+                    print("🚫 Análisis cancelado por el usuario.")
+                    sys.exit(130)  # Código de cancelación
+            except KeyboardInterrupt:
+                print("🚫 Proceso interrumpido por el usuario")
+                handle_graceful_shutdown(args.progress)
+            except InterruptedError:
+                print("🚫 Proceso cancelado")
+                handle_graceful_shutdown(args.progress)
+            except Exception as e:
+                if PROCESO_CANCELADO:
+                    print("🚫 Proceso cancelado durante ejecución")
+                    handle_graceful_shutdown(args.progress)
+                else:
+                    print(f"❌ Error durante el análisis: {e}")
+                    sys.exit(1)
+        else:
+            print("❌ No se seleccionó ningún archivo.")
             sys.exit(1)
-    else:
-        print("No se seleccionó ningún archivo.")
-        sys.exit(1)
+            
+    except KeyboardInterrupt:
+        print("🚫 Programa interrumpido")
+        sys.exit(130)
 
 if __name__ == "__main__":
     main()

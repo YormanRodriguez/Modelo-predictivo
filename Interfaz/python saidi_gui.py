@@ -15,8 +15,6 @@ from ui_components import UIComponents
 from ParametroV import ProgressWindow, PROGRESS_DATA
 from tkinter import filedialog
 import pandas as pd
-
-# NUEVA IMPORTACIÓN: Selector de parámetros
 from selectorOrder import show_parameter_selector, get_selected_parameters, reset_parameters
 
 
@@ -615,7 +613,7 @@ class SAIDIAnalysisGUI:
             self.on_behavior_finished()
             
     def run_script_with_parameters(self, script_path, description, selected_file, order, seasonal_order, callback_finished=None):
-        """NUEVA FUNCIÓN: Ejecutar script con parámetros SARIMAX personalizados"""
+        """NUEVA FUNCIÓN: Ejecutar script con parámetros SARIMAX personalizados - CORREGIDA"""
         def run_in_thread():
             try:
                 self.update_status(f"Ejecutando {description}...")
@@ -623,11 +621,11 @@ class SAIDIAnalysisGUI:
                 # Verificar que el archivo existe
                 if not os.path.exists(script_path):
                     messagebox.showerror("Error", 
-                                       f"No se encuentra el archivo {script_path}\n"
-                                       f"Estructura esperada:\n"
-                                       f"  - Interfaz/ (carpeta actual)\n"
-                                       f"  - backend/ (scripts de Python)\n"
-                                       f"    - {os.path.basename(script_path)}")
+                                    f"No se encuentra el archivo {script_path}\n"
+                                    f"Estructura esperada:\n"
+                                    f"  - Interfaz/ (carpeta actual)\n"
+                                    f"  - backend/ (scripts de Python)\n"
+                                    f"    - {os.path.basename(script_path)}")
                     self.update_status("Error: Archivo no encontrado")
                     if callback_finished:
                         self.root.after(100, callback_finished)
@@ -637,13 +635,10 @@ class SAIDIAnalysisGUI:
                 env = os.environ.copy()
                 env['PYTHONIOENCODING'] = 'utf-8'
                 
-                # Cambiar al directorio backend temporalmente
-                backend_dir = os.path.dirname(script_path)
-                script_name = os.path.basename(script_path)
-                
-                # NUEVA PARTE: Preparar argumentos con parámetros personalizados
+                # CORRECCIÓN CRÍTICA: NO cambiar al directorio backend
+                # Ejecutar desde directorio actual con ruta relativa
                 cmd_args = [
-                    sys.executable, script_name, 
+                    sys.executable, script_path, 
                     '--file', os.path.abspath(selected_file),
                     '--order'
                 ]
@@ -658,15 +653,15 @@ class SAIDIAnalysisGUI:
                 for param in seasonal_order:
                     cmd_args.append(str(param))
                 
-                print(f"Ejecutando: {' '.join(cmd_args)} en directorio {backend_dir}")
+                print(f"Ejecutando: {' '.join(cmd_args)}")
                 
                 # Ejecutar proceso en segundo plano SIN interferir con la ventana
+                # NO usar cwd para evitar el error de ruta duplicada
                 process = subprocess.Popen(cmd_args, 
-                                         env=env,
-                                         cwd=backend_dir,
-                                         stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE,
-                                         creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                                        env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
                 
                 # Esperar a que termine el proceso SIN manipular la ventana
                 return_code = process.wait()
@@ -693,7 +688,7 @@ class SAIDIAnalysisGUI:
         thread = threading.Thread(target=run_in_thread)
         thread.daemon = True
         thread.start()
-        
+
     # ============================================================================
     # FUNCIONES ORIGINALES (sin cambios para optimización)
     # ============================================================================
@@ -748,12 +743,12 @@ class SAIDIAnalysisGUI:
                 )
             
     def run_parameter_optimization(self):
-        """Ejecutar optimización de parámetros con ventana de progreso - SIMPLIFICADO"""
+        """Ejecutar optimización de parámetros con ventana de progreso - CORREGIDO"""
         # Verificar que no esté ejecutándose ya
         if self.is_running_optimization:
             messagebox.showwarning("Proceso en Ejecución", 
-                                 "La optimización de parámetros ya se está ejecutando.\n"
-                                 "Por favor espere a que termine.")
+                                "La optimización de parámetros ya se está ejecutando.\n"
+                                "Por favor espere a que termine.")
             return
             
         if not ExcelManager.is_excel_loaded():
@@ -762,9 +757,9 @@ class SAIDIAnalysisGUI:
             
         # Advertencia sobre el tiempo de procesamiento
         response = messagebox.askyesno("Advertencia - Proceso Extenso",
-                                     "La optimización de parámetros puede tardar más de 12 horas.\n\n"
-                                     "Se mostrará una ventana de progreso con información detallada.\n\n"
-                                     "¿Desea continuar?")
+                                    "La optimización de parámetros puede tardar más de 12 horas.\n\n"
+                                    "Se mostrará una ventana de progreso con información detallada.\n\n"
+                                    "¿Desea continuar?")
         
         if response:
             # Marcar como en ejecución
@@ -774,8 +769,38 @@ class SAIDIAnalysisGUI:
             excel_info = ExcelManager.get_excel_info()
             self.update_status(f"Iniciando optimización de parámetros con {excel_info['file_name']}...")
             
-            # Crear archivo temporal para comunicación
-            self.temp_progress_file = tempfile.mktemp(suffix='_saidi_progress.json')
+            # CORRECCIÓN CRÍTICA: Crear archivo temporal válido ANTES de crear la ventana
+            try:
+                # Crear directorio temporal si no existe
+                temp_dir = tempfile.gettempdir()
+                temp_filename = f"saidi_progress_{int(time.time())}.json"
+                self.temp_progress_file = os.path.join(temp_dir, temp_filename)
+                
+                # Verificar que el directorio existe y es escribible
+                if not os.path.exists(temp_dir):
+                    os.makedirs(temp_dir, exist_ok=True)
+                
+                # Inicializar el archivo con datos básicos
+                initial_data = {
+                    'progress': 0,
+                    'status': 'Iniciando proceso...',
+                    'current_model': '',
+                    'top_models': [],
+                    'timestamp': pd.Timestamp.now().isoformat() if 'pd' in globals() else str(time.time()),
+                    'pid': os.getpid()
+                }
+                
+                with open(self.temp_progress_file, 'w', encoding='utf-8') as f:
+                    json.dump(initial_data, f, ensure_ascii=False, indent=2)
+                
+                print(f"✓ Archivo de progreso creado: {self.temp_progress_file}")
+                
+            except Exception as e:
+                print(f"ERROR creando archivo de progreso: {e}")
+                messagebox.showerror("Error", f"No se pudo crear archivo temporal: {str(e)}")
+                self.is_running_optimization = False
+                self.update_running_state('optimization', False)
+                return
             
             # Inicializar datos globales
             global PROGRESS_DATA
@@ -786,8 +811,10 @@ class SAIDIAnalysisGUI:
                 'top_models': []
             }
             
-            # Mostrar ventana de progreso
-            self.progress_window = ProgressWindow(self.root)
+            # CORRECCIÓN: Pasar el archivo de progreso válido a ProgressWindow
+            self.progress_window = ProgressWindow(self.root, 
+                                                title="Optimización de Parámetros", 
+                                                progress_file=self.temp_progress_file)
             
             # Configurar callback para cuando se cierre la ventana de progreso
             if hasattr(self.progress_window, 'window'):
@@ -808,17 +835,37 @@ class SAIDIAnalysisGUI:
             self.progress_window.cancelled = True
             
     def start_optimization_process(self, file_path, backend_script):
-        """Iniciar el proceso de optimización en un hilo separado - SIMPLIFICADO"""
+        """Iniciar el proceso de optimización en un hilo separado - CORREGIDO"""
         def run_optimization():
             try:
+                # Verificar que el archivo de progreso existe antes de iniciar el proceso
+                if not os.path.exists(self.temp_progress_file):
+                    print(f"ERROR: Archivo de progreso no existe: {self.temp_progress_file}")
+                    self.update_status("Error: No se pudo crear archivo de comunicación")
+                    return
+                
                 # Ejecutar el script de optimización
                 env = os.environ.copy()
                 env['PYTHONIOENCODING'] = 'utf-8'
                 
-                cmd_args = [sys.executable, backend_script, '--file', file_path, 
-                           '--progress', self.temp_progress_file]
+                # CORRECCIÓN CRÍTICA: No cambiar al directorio backend
+                # El script debe ejecutarse desde el directorio actual (Interfaz)
+                # y usar la ruta relativa correcta
+                cmd_args = [sys.executable, backend_script, 
+                        '--file', file_path, 
+                        '--progress', self.temp_progress_file]
                 
-                print(f"DEBUG: Iniciando proceso: {' '.join(cmd_args)}")
+                print(f"DEBUG: Iniciando proceso con archivo de progreso: {self.temp_progress_file}")
+                print(f"DEBUG: Comando: {' '.join(cmd_args)}")
+                
+                # Verificar que el backend script existe
+                if not os.path.exists(backend_script):
+                    print(f"ERROR: Script backend no existe: {backend_script}")
+                    self.update_status("Error: Script backend no encontrado")
+                    return
+                
+                # CORRECCIÓN: Ejecutar desde el directorio actual (Interfaz)
+                # NO cambiar al directorio backend con cwd
                 process = subprocess.Popen(cmd_args, env=env)
                 
                 # Monitorear progreso
@@ -834,9 +881,12 @@ class SAIDIAnalysisGUI:
                     time.sleep(2)
                     if self.progress_window and not self.progress_window.results_shown:
                         self.progress_window.check_and_show_results()
+                elif process.returncode == 130:  # Código de cancelación
+                    self.update_status("Optimización cancelada por el usuario")
+                    print("DEBUG: Proceso cancelado por el usuario")
                 else:
                     self.update_status("Error en optimización")
-                    messagebox.showerror("Error", "Error durante la optimización")
+                    messagebox.showerror("Error", f"Error durante la optimización (código: {process.returncode})")
                     
             except Exception as e:
                 self.update_status("Error inesperado")
@@ -849,11 +899,24 @@ class SAIDIAnalysisGUI:
         thread = threading.Thread(target=run_optimization)
         thread.daemon = True
         thread.start()
-        
+
+
     def on_optimization_finished(self):
-        """Callback cuando termina la optimización"""
+        """Callback cuando termina la optimización - CORREGIDO"""
         self.is_running_optimization = False
         self.update_running_state('optimization', False)
+        
+        # NUEVO: Limpiar archivo temporal al finalizar
+        if hasattr(self, 'temp_progress_file') and self.temp_progress_file:
+            try:
+                if os.path.exists(self.temp_progress_file):
+                    os.remove(self.temp_progress_file)
+                    print(f"✓ Archivo temporal limpiado: {self.temp_progress_file}")
+            except Exception as e:
+                print(f"Advertencia: No se pudo limpiar archivo temporal: {e}")
+            finally:
+                self.temp_progress_file = None
+        
         self.update_status("Optimización de parámetros completada. Sistema listo para nuevas operaciones.")
         
     def monitor_progress(self):
@@ -937,7 +1000,7 @@ class SAIDIAnalysisGUI:
         update_progress()
         
     def run_script_in_background(self, script_path, description, selected_file, callback_finished=None):
-        """Ejecutar script en segundo plano - COMPLETAMENTE SIMPLIFICADO"""
+        """Ejecutar script en segundo plano - COMPLETAMENTE CORREGIDO"""
         def run_in_thread():
             try:
                 self.update_status(f"Ejecutando {description}...")
@@ -945,11 +1008,11 @@ class SAIDIAnalysisGUI:
                 # Verificar que el archivo existe
                 if not os.path.exists(script_path):
                     messagebox.showerror("Error", 
-                                       f"No se encuentra el archivo {script_path}\n"
-                                       f"Estructura esperada:\n"
-                                       f"  - Interfaz/ (carpeta actual)\n"
-                                       f"  - backend/ (scripts de Python)\n"
-                                       f"    - {os.path.basename(script_path)}")
+                                    f"No se encuentra el archivo {script_path}\n"
+                                    f"Estructura esperada:\n"
+                                    f"  - Interfaz/ (carpeta actual)\n"
+                                    f"  - backend/ (scripts de Python)\n"
+                                    f"    - {os.path.basename(script_path)}")
                     self.update_status("Error: Archivo no encontrado")
                     if callback_finished:
                         self.root.after(100, callback_finished)
@@ -959,24 +1022,20 @@ class SAIDIAnalysisGUI:
                 env = os.environ.copy()
                 env['PYTHONIOENCODING'] = 'utf-8'
                 
-                # Cambiar al directorio backend temporalmente
-                backend_dir = os.path.dirname(script_path)
-                script_name = os.path.basename(script_path)
+                # CORRECCIÓN CRÍTICA: Ejecutar sin cambiar de directorio
+                # Usar la ruta relativa directamente
+                cmd_args = [sys.executable, script_path, '--file', os.path.abspath(selected_file)]
                 
-                # Preparar argumentos del comando
-                cmd_args = [sys.executable, script_name, '--file', os.path.abspath(selected_file)]
+                print(f"Ejecutando: {' '.join(cmd_args)}")
                 
-                print(f"Ejecutando: {' '.join(cmd_args)} en directorio {backend_dir}")
-                
-                # Ejecutar proceso en segundo plano SIN interferir con la ventana
+                # Ejecutar proceso en segundo plano SIN cambiar directorio
                 process = subprocess.Popen(cmd_args, 
-                                         env=env,
-                                         cwd=backend_dir,
-                                         stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE,
-                                         creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                                        env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
                 
-                # Esperar a que termine el proceso SIN manipular la ventana
+                # Esperar a que termine el proceso
                 return_code = process.wait()
                 
                 if return_code == 0:
@@ -1001,8 +1060,7 @@ class SAIDIAnalysisGUI:
         thread = threading.Thread(target=run_in_thread)
         thread.daemon = True
         thread.start()
-
-
+        
 def main():
     """Función principal"""
     root = tk.Tk()
