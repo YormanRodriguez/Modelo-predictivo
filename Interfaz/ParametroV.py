@@ -1,10 +1,19 @@
-# ParametroV.py - Corrección del sistema de cancelación
+# ParametroV.py 
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
 import json
 from datetime import datetime
 import tempfile
+
+# AGREGAR: Importar sistema de rutas PyInstaller
+try:
+    from path_utils import path_manager, get_temp_file, cleanup_old_temp_files, is_frozen
+    PATH_UTILS_AVAILABLE = True
+    print("Sistema de rutas PyInstaller cargado en ParametroV.py")
+except ImportError:
+    PATH_UTILS_AVAILABLE = False
+    print("Sistema de rutas no disponible en ParametroV.py - modo compatibilidad")
 
 # IMPORTAR EL BRIDGE DE COMUNICACIÓN
 try:
@@ -33,12 +42,15 @@ class ProgressWindow:
         self.results_shown = False
         self.bridge_updated = False
         
-        # CORRECCIÓN CRÍTICA: Asegurar que progress_file sea válido
+        # CORRECCIÓN CRÍTICA: Asegurar que progress_file sea válido con path_utils
         if progress_file and os.path.dirname(progress_file):
             self.progress_file = progress_file
         else:
-            # Crear archivo temporal en directorio válido
-            self.progress_file = tempfile.mktemp(suffix='_progress.json', prefix='saidi_')
+            # Crear archivo temporal usando path_utils si está disponible
+            if PATH_UTILS_AVAILABLE:
+                self.progress_file = path_manager.get_temp_file('saidi_progress.json')
+            else:
+                self.progress_file = tempfile.mktemp(suffix='_progress.json', prefix='saidi_')
             print(f"Progress file corregido: {self.progress_file}")
             
         # NUEVA VARIABLE: Archivo de cancelación específico
@@ -84,10 +96,13 @@ class ProgressWindow:
     def create_cancellation_file(self):
         """FUNCIÓN CORREGIDA: Crear archivo de cancelación con validación robusta"""
         try:
-            # Verificar que el directorio base existe
+            # Verificar que el directorio base existe con path_utils
             cancel_dir = os.path.dirname(self.cancel_file)
-            if not cancel_dir:  # Si no hay directorio, usar temp
-                self.cancel_file = tempfile.mktemp(suffix='_cancel.json', prefix='saidi_')
+            if not cancel_dir:  # Si no hay directorio, usar temp con path_utils
+                if PATH_UTILS_AVAILABLE:
+                    self.cancel_file = path_manager.get_temp_file('saidi_cancel.json')
+                else:
+                    self.cancel_file = tempfile.mktemp(suffix='_cancel.json', prefix='saidi_')
                 cancel_dir = os.path.dirname(self.cancel_file)
                 
             # Crear directorio si no existe
@@ -111,9 +126,13 @@ class ProgressWindow:
             
         except PermissionError as e:
             print(f"Error de permisos creando archivo de cancelación: {e}")
-            # Intentar crear en directorio temporal como fallback
+            # Intentar crear en directorio temporal como fallback con path_utils
             try:
-                fallback_file = tempfile.mktemp(suffix='_cancel_fallback.json', prefix='saidi_')
+                if PATH_UTILS_AVAILABLE:
+                    fallback_file = path_manager.get_temp_file('saidi_cancel_fallback.json')
+                else:
+                    fallback_file = tempfile.mktemp(suffix='_cancel_fallback.json', prefix='saidi_')
+                
                 with open(fallback_file, 'w', encoding='utf-8') as f:
                     json.dump(cancel_data, f, ensure_ascii=False, indent=2)
                 self.cancel_file = fallback_file

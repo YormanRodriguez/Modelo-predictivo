@@ -4,6 +4,16 @@ warnings.filterwarnings('ignore')
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, messagebox
+
+# AGREGAR: Importar sistema de rutas PyInstaller
+try:
+    from path_utils import path_manager, get_temp_file, cleanup_old_temp_files, is_frozen
+    PATH_UTILS_AVAILABLE = True
+    print("Sistema de rutas PyInstaller cargado en Parametro.py")
+except ImportError:
+    PATH_UTILS_AVAILABLE = False
+    print("Sistema de rutas no disponible en Parametro.py - modo compatibilidad")
+
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from pmdarima import auto_arima
 import numpy as np
@@ -68,10 +78,17 @@ def check_cancellation(progress_file):
     return False
 
 def create_cancellation_file(progress_file):
-    """NUEVA FUNCIÓN: Crear archivo de cancelación"""
+    """NUEVA FUNCIÓN: Crear archivo de cancelación con soporte PyInstaller"""
     if progress_file:
         try:
             cancel_file = progress_file.replace('.json', '_cancel.json')
+            
+            # Usar path_utils si está disponible
+            if PATH_UTILS_AVAILABLE:
+                cancel_dir = os.path.dirname(cancel_file)
+                if not cancel_dir or not os.path.exists(cancel_dir):
+                    cancel_file = path_manager.get_temp_file(os.path.basename(cancel_file))
+            
             with open(cancel_file, 'w') as f:
                 f.write(json.dumps({
                     'cancelled_at': pd.Timestamp.now().isoformat(),
@@ -111,8 +128,15 @@ def update_progress(progress_file, progress, status, current_model=""):
     
     if progress_file and os.path.dirname(progress_file):
         try:
-            # Asegurar que el directorio existe
-            os.makedirs(os.path.dirname(progress_file), exist_ok=True)
+            # Asegurar que el directorio existe con soporte PyInstaller
+            progress_dir = os.path.dirname(progress_file)
+            if PATH_UTILS_AVAILABLE and not os.path.exists(progress_dir):
+                # Usar directorio temporal de path_utils si el original no es accesible
+                temp_filename = os.path.basename(progress_file)
+                progress_file = path_manager.get_temp_file(temp_filename)
+                progress_dir = os.path.dirname(progress_file)
+            
+            os.makedirs(progress_dir, exist_ok=True)
             
             # Escribir archivo de progreso
             progress_data = {
@@ -495,10 +519,21 @@ class AutoArimaWithMultipleMetrics:
         return self.mejor_params_composite
 
 def analizar_saidi(file_path, progress_file=None):
-    """Función principal de análisis SAIDI - MODIFICADA CON CANCELACIÓN"""
+    """Función principal de análisis SAIDI - MODIFICADA CON CANCELACIÓN Y PYINSTALLER"""
     global PROCESO_CANCELADO
     
     try:
+        # Información del modo de ejecución
+        execution_mode = "PyInstaller" if (PATH_UTILS_AVAILABLE and is_frozen()) else "Desarrollo"
+        print(f"Parametro.py ejecutándose en modo: {execution_mode}")
+        
+        # Limpiar archivos temporales antiguos
+        if PATH_UTILS_AVAILABLE:
+            try:
+                cleanup_old_temp_files()
+            except Exception as e:
+                print(f"Warning: No se pudieron limpiar archivos temporales: {e}")
+        
         # CONFIGURAR MANEJADORES DE SEÑALES PARA CANCELACIÓN
         setup_signal_handlers(progress_file)
         

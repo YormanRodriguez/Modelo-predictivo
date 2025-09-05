@@ -8,6 +8,15 @@ from typing import Optional, Dict, Any
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
+# AGREGAR: Importar sistema de rutas PyInstaller
+try:
+    from path_utils import path_manager, get_temp_file, cleanup_old_temp_files, is_frozen
+    PATH_UTILS_AVAILABLE = True
+    print("Sistema de rutas PyInstaller cargado en excel_manager.py")
+except ImportError:
+    PATH_UTILS_AVAILABLE = False
+    print("Sistema de rutas no disponible en excel_manager.py - modo compatibilidad")
+
 class ExcelManager:
     """Gestor singleton para manejar archivos Excel globalmente"""
     
@@ -28,6 +37,10 @@ class ExcelManager:
         Returns: True si se cargó exitosamente, False si falló
         """
         try:
+            # Información del modo de ejecución
+            execution_mode = "PyInstaller" if (PATH_UTILS_AVAILABLE and is_frozen()) else "Desarrollo"
+            print(f"ExcelManager ejecutándose en modo: {execution_mode}")
+            
             # Verificar que el archivo existe
             if not os.path.exists(file_path):
                 print(f"Error: Archivo no encontrado: {file_path}")
@@ -86,14 +99,20 @@ class ExcelManager:
             if parent_window:
                 parent_window.withdraw()
             
+            # Determinar directorio inicial con path_utils
+            if PATH_UTILS_AVAILABLE:
+                initial_dir = path_manager.executable_dir
+            else:
+                initial_dir = os.getcwd()
+            
             # Abrir dialog para seleccionar archivo
             file_path = filedialog.askopenfilename(
-                title="Seleccionar archivo Excel - SAIDI Analysis Pro",
+                title="Seleccionar archivo Excel - SAIDI Analysis",
                 filetypes=[
                     ("Archivos Excel", "*.xlsx *.xls"),
                     ("Todos los archivos", "*.*")
                 ],
-                initialdir=os.getcwd()
+                initialdir=initial_dir
             )
             
             # Restaurar ventana padre
@@ -234,10 +253,18 @@ class ExcelManager:
     
     @classmethod
     def clear_excel(cls):
-        """Limpiar los datos cargados"""
+        """Limpiar los datos cargados con limpieza de archivos temporales"""
         cls._excel_data = None
         cls._file_path = None
         cls._validated = False
+        
+        # Limpiar archivos temporales si path_utils está disponible
+        if PATH_UTILS_AVAILABLE:
+            try:
+                cleanup_old_temp_files()
+            except Exception as e:
+                print(f"Warning: No se pudieron limpiar archivos temporales: {e}")
+        
         print("Excel data cleared")
     
     @classmethod

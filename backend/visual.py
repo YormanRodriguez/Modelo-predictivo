@@ -5,6 +5,16 @@ warnings.filterwarnings('ignore')
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+
+# AGREGAR: Importar sistema de rutas PyInstaller
+try:
+    from path_utils import path_manager, get_temp_file, cleanup_old_temp_files, is_frozen
+    PATH_UTILS_AVAILABLE = True
+    print("Sistema de rutas PyInstaller cargado en visual.py")
+except ImportError:
+    PATH_UTILS_AVAILABLE = False
+    print("Sistema de rutas no disponible en visual.py - modo compatibilidad")
+
 from matplotlib.ticker import MaxNLocator
 import argparse
 import sys
@@ -53,8 +63,18 @@ def calcular_metricas_validacion(datos_reales, predicciones):
 def generar_grafica_validacion(file_path, order=(4, 0, 0), seasonal_order=(1, 0, 0, 8)):
     """Genera la gráfica de validación del modelo SARIMAX con parámetros dinámicos."""
     try:
+        # Información del modo de ejecución
+        execution_mode = "PyInstaller" if (PATH_UTILS_AVAILABLE and is_frozen()) else "Desarrollo"
+        print(f"visual.py ejecutándose en modo: {execution_mode}")
         print(f"Generando gráfica de validación para: {file_path}")
         print(f"Parámetros SARIMAX: order={order}, seasonal_order={seasonal_order}")
+        
+        # Limpiar archivos temporales antiguos
+        if PATH_UTILS_AVAILABLE:
+            try:
+                cleanup_old_temp_files()
+            except Exception as e:
+                print(f"Warning: No se pudieron limpiar archivos temporales: {e}")
         
         # === Cargar datos ===
         df = pd.read_excel(file_path, sheet_name="Hoja1")
@@ -387,6 +407,8 @@ def generar_grafica_validacion(file_path, order=(4, 0, 0), seasonal_order=(1, 0,
         # === RESUMEN EN CONSOLA ===
         print(f"\n" + "="*70)
         print("RESUMEN DE VALIDACIÓN DEL MODELO")
+        if PATH_UTILS_AVAILABLE and is_frozen():
+            print("(EJECUTABLE PYINSTALLER)")
         print("="*70)
         print(f"Parámetros utilizados: SARIMAX{order}x{seasonal_order}")
         print(f"Período de entrenamiento: {datos_entrenamiento.index[0].strftime('%Y-%m')} a {datos_entrenamiento.index[-1].strftime('%Y-%m')}")

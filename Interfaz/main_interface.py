@@ -1,7 +1,7 @@
-# main_interface.py - Lógica de negocio separada de la interfaz
+# main_interface.py - Lógica de negocio con soporte PyInstaller
 """
 Aplicación principal SAIDI Analysis Pro
-Lógica de negocio separada de los componentes de interfaz
+Lógica de negocio con gestión de rutas compatible con PyInstaller
 """
 import tkinter as tk
 from tkinter import messagebox, filedialog
@@ -13,6 +13,21 @@ import tempfile
 import json
 import time
 import pandas as pd
+import logging
+
+# Importar sistema de rutas para PyInstaller
+try:
+    from path_utils import (
+        path_manager, get_modelo_script, get_parametro_script, get_visual_script,
+        create_progress_file, cleanup_old_temp_files, verify_project_structure,
+        is_frozen
+    )
+    PATH_UTILS_AVAILABLE = True
+    print("Sistema de rutas PyInstaller cargado correctamente")
+except ImportError as e:
+    PATH_UTILS_AVAILABLE = False
+    print(f"Sistema de rutas no disponible: {e}")
+    print("  Funcionando en modo compatibilidad (solo desarrollo)")
 
 # Importar módulos locales
 from excel_manager import ExcelManager
@@ -20,9 +35,12 @@ from main_interface_ui import MainInterfaceUI
 from ParametroV import ProgressWindow, PROGRESS_DATA
 from selectorOrder import show_parameter_selector, get_selected_parameters, reset_parameters
 
+# Configurar logging
+logging.basicConfig(level=logging.INFO, format='[MAIN] %(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
 
 class SAIDIAnalysisApp:
-    """Aplicación principal SAIDI Analysis Pro - Solo lógica de negocio"""
+    """Aplicación principal SAIDI Analysis Pro - Lógica de negocio con soporte PyInstaller"""
     
     def __init__(self, root):
         self.root = root
@@ -35,6 +53,15 @@ class SAIDIAnalysisApp:
         # Variables para archivos temporales y ventanas de progreso
         self.temp_progress_file = None
         self.progress_window = None
+        
+        # Información del modo de ejecución
+        self.is_frozen_app = is_frozen() if PATH_UTILS_AVAILABLE else False
+        
+        logger.info(f"Iniciando SAIDI Analysis Pro - Modo: {'PyInstaller' if self.is_frozen_app else 'Desarrollo'}")
+        
+        # Limpiar archivos temporales antiguos al iniciar
+        if PATH_UTILS_AVAILABLE:
+            cleanup_old_temp_files()
         
         # Crear callbacks para la UI
         callbacks = {
@@ -55,7 +82,35 @@ class SAIDIAnalysisApp:
         self.setup_application()
 
     def verify_directory_structure(self):
-        """Verificar que existe la estructura de directorios correcta"""
+        """Verificar estructura de directorios con soporte PyInstaller"""
+        if not PATH_UTILS_AVAILABLE:
+            # Modo compatibilidad - verificación básica
+            return self._verify_basic_structure()
+        
+        # Verificación avanzada con path_utils
+        structure = verify_project_structure()
+        
+        if not structure['valid']:
+            missing_info = []
+            if structure['missing_dirs']:
+                missing_info.append(f"Directorios: {', '.join(structure['missing_dirs'])}")
+            if structure['missing_files']:
+                missing_info.append(f"Archivos: {', '.join(structure['missing_files'])}")
+            
+            error_msg = (f"Error en estructura del proyecto ({structure['mode']}).\n\n"
+                        f"Elementos faltantes:\n{chr(10).join(missing_info)}\n\n"
+                        f"Ruta base: {structure['base_path']}")
+            
+            logger.error(f"Estructura inválida: {error_msg}")
+            
+            messagebox.showerror("Error de Estructura", error_msg)
+            return False
+        
+        logger.info(f"Estructura verificada correctamente - Modo: {structure['mode']}")
+        return True
+    
+    def _verify_basic_structure(self):
+        """Verificación básica de estructura (modo compatibilidad)"""
         backend_dir = "backend"
         required_files = ["Modelo.py", "Parametro.py", "visual.py"]
         
@@ -80,16 +135,20 @@ class SAIDIAnalysisApp:
                                  "\n\nLa aplicación puede no funcionar correctamente.")
             return False
             
-        print("Estructura de directorios verificada correctamente")
+        logger.info("Estructura básica verificada correctamente")
         return True
         
     def setup_application(self):
         """Configurar la aplicación completa"""
         self.ui.setup_main_window()
         self.ui.create_main_interface()
+        
+        # Mostrar información del modo en la UI si es PyInstaller
+        if self.is_frozen_app:
+            self.ui.update_status("SAIDI Analysis Pro (Versión Ejecutable) - Sistema listo")
 
     def on_window_close_attempt(self):
-        """Manejar intento de cierre de ventana"""
+        """Manejar intento de cierre de ventana con limpieza mejorada"""
         if any([self.is_running_prediction, self.is_running_behavior, self.is_running_optimization]):
             response = messagebox.askyesno(
                 "Procesos en Ejecución", 
@@ -104,6 +163,15 @@ class SAIDIAnalysisApp:
         if messagebox.askokcancel("Salir", "¿Desea cerrar SAIDI Analysis Pro?"):
             # Limpiar datos globales al salir
             ExcelManager.clear_excel()
+            
+            # Limpiar archivos temporales
+            if PATH_UTILS_AVAILABLE:
+                try:
+                    cleanup_old_temp_files()
+                    logger.info("Archivos temporales limpiados al cerrar")
+                except Exception as e:
+                    logger.warning(f"Error limpiando temporales: {e}")
+            
             self.root.destroy()
 
     # ============================================================================
@@ -127,12 +195,18 @@ class SAIDIAnalysisApp:
                 ('Todos los archivos', '*.*')
             ]
             
+            # Directorio inicial inteligente
+            if PATH_UTILS_AVAILABLE:
+                initial_dir = path_manager.executable_dir
+            else:
+                initial_dir = os.getcwd()
+            
             # Mostrar diálogo de selección
             file_path = filedialog.askopenfilename(
                 parent=self.root,
                 title="Seleccionar Archivo Excel - SAIDI Analysis Pro",
                 filetypes=filetypes,
-                initialdir=os.getcwd()
+                initialdir=initial_dir
             )
             
             # Restaurar pantalla completa
@@ -144,13 +218,13 @@ class SAIDIAnalysisApp:
                 self.ui.update_status("Selección de archivo cancelada")
                 
         except Exception as e:
-            print(f"ERROR en select_excel_file: {e}")
+            logger.error(f"Error en select_excel_file: {e}")
             messagebox.showerror("Error", f"Error al seleccionar archivo: {str(e)}")
             self.ui.update_status("Error al seleccionar archivo")
             self.ui.ensure_fullscreen()
 
     def process_selected_excel(self, file_path):
-        """Procesar el archivo Excel seleccionado"""
+        """Procesar el archivo Excel seleccionado con validación mejorada"""
         try:
             self.ui.update_status("Validando archivo Excel...")
             
@@ -194,39 +268,44 @@ class SAIDIAnalysisApp:
                 self.on_excel_loaded()
                 self.ui.ensure_fullscreen()
                 
-                print(f"Excel cargado exitosamente: {file_path}")
+                logger.info(f"Excel cargado exitosamente: {file_path}")
                 
                 excel_info = ExcelManager.get_excel_info()
-                self.ui.update_status(f"Excel cargado: {excel_info['file_name']} - {excel_info['rows']} filas, {excel_info['columns']} columnas - Sistema listo")
+                status_msg = f"Excel cargado: {excel_info['file_name']} - {excel_info['rows']} filas, {excel_info['columns']} columnas - Sistema listo"
+                if self.is_frozen_app:
+                    status_msg += " (Ejecutable)"
+                self.ui.update_status(status_msg)
                 
             else:
                 self.ui.update_status("Error al cargar el archivo")
                 self.ui.ensure_fullscreen()
                 
         except Exception as e:
-            print(f"ERROR en process_selected_excel: {e}")
+            logger.error(f"Error en process_selected_excel: {e}")
             messagebox.showerror("Error", f"Error inesperado al procesar el archivo:\n{str(e)}")
             self.ui.update_status("Error inesperado")
             self.ui.ensure_fullscreen()
         
     def on_excel_loaded(self):
         """Callback ejecutado cuando se carga un Excel exitosamente"""
-        print("DEBUG: on_excel_loaded() iniciado")
+        logger.info("Excel cargado - actualizando interfaz")
         
         if not ExcelManager.is_excel_loaded():
-            print("ERROR: on_excel_loaded llamado pero ExcelManager reporta no cargado")
+            logger.error("on_excel_loaded llamado pero ExcelManager reporta no cargado")
             return
         
         # Usar after() para asegurar que la interfaz se actualice correctamente
         def update_interface():
             try:
-                print("DEBUG: Actualizando interfaz después de cargar Excel")
                 self.ui.update_modules_state()
                 excel_info = ExcelManager.get_excel_info()
-                self.ui.update_status(f"Excel cargado: {excel_info['file_name']} - Sistema listo para análisis")
-                print("Módulos habilitados después de cargar Excel")
+                status_msg = f"Excel cargado: {excel_info['file_name']} - Sistema listo para análisis"
+                if self.is_frozen_app:
+                    status_msg += " (Ejecutable)"
+                self.ui.update_status(status_msg)
+                logger.info("Módulos habilitados después de cargar Excel")
             except Exception as e:
-                print(f"ERROR en update_interface: {e}")
+                logger.error(f"Error en update_interface: {e}")
         
         # Ejecutar actualización de interfaz con un pequeño delay
         self.root.after(100, update_interface)
@@ -235,7 +314,7 @@ class SAIDIAnalysisApp:
         self.root.after(200, self.ui.ensure_fullscreen)
 
     # ============================================================================
-    # MÓDULOS DE ANÁLISIS CON SELECTOR DE PARÁMETROS
+    # MÓDULOS DE ANÁLISIS CON RUTAS MEJORADAS
     # ============================================================================
     
     def run_prediction(self):
@@ -252,7 +331,7 @@ class SAIDIAnalysisApp:
             
         # Mostrar selector de parámetros
         self.ui.update_status("Configurando parámetros para análisis predictivo...")
-        print("DEBUG: Abriendo selector de parámetros para predicción...")
+        logger.info("Abriendo selector de parámetros para predicción")
         
         show_parameter_selector(self.root, self.execute_prediction_with_params, "Análisis Predictivo SAIDI")
         
@@ -263,10 +342,10 @@ class SAIDIAnalysisApp:
             
             if not confirmed:
                 self.ui.update_status("Análisis predictivo cancelado por el usuario")
-                print("DEBUG: Usuario canceló la selección de parámetros")
+                logger.info("Usuario canceló la selección de parámetros")
                 return
                 
-            print(f"DEBUG: Ejecutando predicción con parámetros - order: {order}, seasonal_order: {seasonal_order}")
+            logger.info(f"Ejecutando predicción con parámetros - order: {order}, seasonal_order: {seasonal_order}")
             
             # Marcar como en ejecución y actualizar interfaz
             self.is_running_prediction = True
@@ -275,7 +354,12 @@ class SAIDIAnalysisApp:
             excel_info = ExcelManager.get_excel_info()
             self.ui.update_status(f"Ejecutando análisis predictivo SARIMAX{order}x{seasonal_order} con {excel_info['file_name']}...")
             
-            backend_script = os.path.join("backend", "Modelo.py")
+            # Obtener ruta del script con soporte PyInstaller
+            if PATH_UTILS_AVAILABLE:
+                backend_script = get_modelo_script()
+            else:
+                backend_script = os.path.join("backend", "Modelo.py")
+            
             file_path = ExcelManager.get_file_path()
             
             # Ejecutar script con parámetros personalizados
@@ -289,7 +373,7 @@ class SAIDIAnalysisApp:
             )
             
         except Exception as e:
-            print(f"ERROR en execute_prediction_with_params: {e}")
+            logger.error(f"Error en execute_prediction_with_params: {e}")
             messagebox.showerror("Error", f"Error al ejecutar análisis predictivo: {str(e)}")
             self.on_prediction_finished()
             
@@ -307,7 +391,7 @@ class SAIDIAnalysisApp:
             
         # Mostrar selector de parámetros
         self.ui.update_status("Configurando parámetros para análisis de comportamiento...")
-        print("DEBUG: Abriendo selector de parámetros para análisis de comportamiento...")
+        logger.info("Abriendo selector de parámetros para análisis de comportamiento")
         
         show_parameter_selector(self.root, self.execute_behavior_with_params, "Análisis de Precisión del Modelo")
         
@@ -318,10 +402,10 @@ class SAIDIAnalysisApp:
             
             if not confirmed:
                 self.ui.update_status("Análisis de comportamiento cancelado por el usuario")
-                print("DEBUG: Usuario canceló la selección de parámetros")
+                logger.info("Usuario canceló la selección de parámetros")
                 return
                 
-            print(f"DEBUG: Ejecutando análisis de comportamiento con parámetros - order: {order}, seasonal_order: {seasonal_order}")
+            logger.info(f"Ejecutando análisis de comportamiento con parámetros - order: {order}, seasonal_order: {seasonal_order}")
             
             # Marcar como en ejecución y actualizar interfaz
             self.is_running_behavior = True
@@ -330,7 +414,12 @@ class SAIDIAnalysisApp:
             excel_info = ExcelManager.get_excel_info()
             self.ui.update_status(f"Generando análisis de precisión SARIMAX{order}x{seasonal_order} con {excel_info['file_name']}...")
             
-            backend_script = os.path.join("backend", "visual.py")
+            # Obtener ruta del script con soporte PyInstaller
+            if PATH_UTILS_AVAILABLE:
+                backend_script = get_visual_script()
+            else:
+                backend_script = os.path.join("backend", "visual.py")
+            
             file_path = ExcelManager.get_file_path()
             
             # Ejecutar script con parámetros personalizados
@@ -344,24 +433,29 @@ class SAIDIAnalysisApp:
             )
             
         except Exception as e:
-            print(f"ERROR en execute_behavior_with_params: {e}")
+            logger.error(f"Error en execute_behavior_with_params: {e}")
             messagebox.showerror("Error", f"Error al ejecutar análisis de comportamiento: {str(e)}")
             self.on_behavior_finished()
 
     def run_script_with_parameters(self, script_path, description, selected_file, order, seasonal_order, callback_finished=None):
-        """Ejecutar script con parámetros SARIMAX personalizados"""
+        """Ejecutar script con parámetros SARIMAX personalizados y soporte PyInstaller"""
         def run_in_thread():
             try:
                 self.ui.update_status(f"Ejecutando {description}...")
                 
                 # Verificar que el archivo existe
                 if not os.path.exists(script_path):
-                    messagebox.showerror("Error", 
-                                    f"No se encuentra el archivo {script_path}\n"
-                                    f"Estructura esperada:\n"
+                    error_msg = f"No se encuentra el archivo {script_path}"
+                    if not PATH_UTILS_AVAILABLE:
+                        error_msg += (f"\nEstructura esperada:\n"
                                     f"  - Interfaz/ (carpeta actual)\n"
                                     f"  - backend/ (scripts de Python)\n"
                                     f"    - {os.path.basename(script_path)}")
+                    else:
+                        error_msg += f"\nModo: {'PyInstaller' if self.is_frozen_app else 'Desarrollo'}"
+                        error_msg += f"\nRuta base: {path_manager.base_path}"
+                    
+                    messagebox.showerror("Error", error_msg)
                     self.ui.update_status("Error: Archivo no encontrado")
                     if callback_finished:
                         self.root.after(100, callback_finished)
@@ -371,9 +465,24 @@ class SAIDIAnalysisApp:
                 env = os.environ.copy()
                 env['PYTHONIOENCODING'] = 'utf-8'
                 
+                # En PyInstaller, agregar el directorio base al PYTHONPATH
+                if self.is_frozen_app and PATH_UTILS_AVAILABLE:
+                    current_pythonpath = env.get('PYTHONPATH', '')
+                    if current_pythonpath:
+                        env['PYTHONPATH'] = f"{path_manager.base_path}{os.pathsep}{current_pythonpath}"
+                    else:
+                        env['PYTHONPATH'] = path_manager.base_path
+                
                 # Crear comando con parámetros
+                if self.is_frozen_app:
+                    # En executable, usar Python del sistema o el embebido
+                    python_executable = sys.executable
+                else:
+                    # En desarrollo, usar Python actual
+                    python_executable = sys.executable
+                
                 cmd_args = [
-                    sys.executable, script_path, 
+                    python_executable, script_path, 
                     '--file', os.path.abspath(selected_file),
                     '--order'
                 ]
@@ -388,34 +497,51 @@ class SAIDIAnalysisApp:
                 for param in seasonal_order:
                     cmd_args.append(str(param))
                 
-                print(f"Ejecutando: {' '.join(cmd_args)}")
+                logger.info(f"Ejecutando comando: {' '.join(cmd_args)}")
+                logger.info(f"Directorio de trabajo: {os.getcwd()}")
                 
                 # Ejecutar proceso en segundo plano
+                creation_flags = 0
+                if os.name == 'nt':  # Windows
+                    creation_flags = subprocess.CREATE_NO_WINDOW
+                
                 process = subprocess.Popen(cmd_args, 
                                         env=env,
                                         stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE,
-                                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                                        creationflags=creation_flags)
                 
                 # Esperar a que termine el proceso
-                return_code = process.wait()
+                stdout, stderr = process.communicate()
+                return_code = process.returncode
+                
+                # Log de debug
+                if stdout:
+                    logger.info(f"STDOUT: {stdout.decode('utf-8', errors='ignore')}")
+                if stderr:
+                    logger.warning(f"STDERR: {stderr.decode('utf-8', errors='ignore')}")
                 
                 if return_code == 0:
                     excel_info = ExcelManager.get_excel_info()
-                    self.ui.update_status(f"{description} completado con {excel_info['file_name']}")
-                    print(f"{description} ejecutado correctamente")
+                    status_msg = f"{description} completado con {excel_info['file_name']}"
+                    if self.is_frozen_app:
+                        status_msg += " (Ejecutable)"
+                    self.ui.update_status(status_msg)
+                    logger.info(f"{description} ejecutado correctamente")
                         
                 else:
                     self.ui.update_status(f"Error en {description}")
-                    print(f"Error en {description} - Código: {return_code}")
+                    logger.error(f"Error en {description} - Código: {return_code}")
+                    if stderr:
+                        logger.error(f"Error details: {stderr.decode('utf-8', errors='ignore')}")
                     
             except Exception as e:
                 self.ui.update_status("Error inesperado")
-                print(f"ERROR: {e}")
+                logger.error(f"Error inesperado: {e}")
                 messagebox.showerror("Error", f"Error inesperado: {str(e)}")
             finally:
                 # Ejecutar callback cuando el proceso termine
-                print(f"DEBUG: Proceso terminado, ejecutando callback...")
+                logger.info("Proceso terminado, ejecutando callback")
                 if callback_finished:
                     self.root.after(500, callback_finished)
         
@@ -424,11 +550,11 @@ class SAIDIAnalysisApp:
         thread.start()
 
     # ============================================================================
-    # OPTIMIZACIÓN DE PARÁMETROS
+    # OPTIMIZACIÓN DE PARÁMETROS CON GESTIÓN MEJORADA
     # ============================================================================
         
     def run_parameter_optimization(self):
-        """Ejecutar optimización de parámetros con ventana de progreso"""
+        """Ejecutar optimización de parámetros con ventana de progreso y soporte PyInstaller"""
         if self.is_running_optimization:
             messagebox.showwarning("Proceso en Ejecución", 
                                 "La optimización de parámetros ya se está ejecutando.\n"
@@ -440,10 +566,13 @@ class SAIDIAnalysisApp:
             return
             
         # Advertencia sobre el tiempo de procesamiento
-        response = messagebox.askyesno("Advertencia - Proceso Extenso",
-                                    "La optimización de parámetros puede tardar más de 12 horas.\n\n"
-                                    "Se mostrará una ventana de progreso con información detallada.\n\n"
-                                    "¿Desea continuar?")
+        warning_msg = "La optimización de parámetros puede tardar más de 12 horas.\n\n"
+        warning_msg += "Se mostrará una ventana de progreso con información detallada.\n\n"
+        if self.is_frozen_app:
+            warning_msg += "MODO EJECUTABLE: El proceso continuará aunque cierre esta ventana.\n\n"
+        warning_msg += "¿Desea continuar?"
+        
+        response = messagebox.askyesno("Advertencia - Proceso Extenso", warning_msg)
         
         if response:
             # Marcar como en ejecución
@@ -451,17 +580,29 @@ class SAIDIAnalysisApp:
             self.ui.update_running_state('optimization', True)
             
             excel_info = ExcelManager.get_excel_info()
-            self.ui.update_status(f"Iniciando optimización de parámetros con {excel_info['file_name']}...")
+            status_msg = f"Iniciando optimización de parámetros con {excel_info['file_name']}..."
+            if self.is_frozen_app:
+                status_msg += " (Ejecutable)"
+            self.ui.update_status(status_msg)
             
-            # Crear archivo temporal válido
+            # Crear archivo temporal para progreso con gestión mejorada
             try:
-                temp_dir = tempfile.gettempdir()
-                temp_filename = f"saidi_progress_{int(time.time())}.json"
-                self.temp_progress_file = os.path.join(temp_dir, temp_filename)
+                if PATH_UTILS_AVAILABLE:
+                    self.temp_progress_file = create_progress_file("saidi_optimization")
+                else:
+                    # Fallback para modo compatibilidad
+                    temp_dir = tempfile.gettempdir()
+                    temp_filename = f"saidi_optimization_{int(time.time())}.json"
+                    self.temp_progress_file = os.path.join(temp_dir, temp_filename)
                 
-                # Verificar que el directorio existe y es escribible
-                if not os.path.exists(temp_dir):
-                    os.makedirs(temp_dir, exist_ok=True)
+                # Verificar que se puede escribir en el directorio
+                test_file = self.temp_progress_file + ".test"
+                try:
+                    with open(test_file, 'w') as f:
+                        f.write("test")
+                    os.remove(test_file)
+                except Exception as write_error:
+                    raise Exception(f"No se puede escribir en directorio temporal: {write_error}")
                 
                 # Inicializar el archivo con datos básicos
                 initial_data = {
@@ -470,16 +611,17 @@ class SAIDIAnalysisApp:
                     'current_model': '',
                     'top_models': [],
                     'timestamp': pd.Timestamp.now().isoformat() if 'pd' in globals() else str(time.time()),
-                    'pid': os.getpid()
+                    'pid': os.getpid(),
+                    'mode': 'PyInstaller' if self.is_frozen_app else 'Development'
                 }
                 
                 with open(self.temp_progress_file, 'w', encoding='utf-8') as f:
                     json.dump(initial_data, f, ensure_ascii=False, indent=2)
                 
-                print(f"Archivo de progreso creado: {self.temp_progress_file}")
+                logger.info(f"Archivo de progreso creado: {self.temp_progress_file}")
                 
             except Exception as e:
-                print(f"ERROR creando archivo de progreso: {e}")
+                logger.error(f"Error creando archivo de progreso: {e}")
                 messagebox.showerror("Error", f"No se pudo crear archivo temporal: {str(e)}")
                 self.is_running_optimization = False
                 self.ui.update_running_state('optimization', False)
@@ -504,7 +646,11 @@ class SAIDIAnalysisApp:
                 self.progress_window.window.protocol("WM_DELETE_WINDOW", self.on_optimization_window_closed)
             
             # Iniciar proceso en hilo separado
-            backend_script = os.path.join("backend", "Parametro.py")
+            if PATH_UTILS_AVAILABLE:
+                backend_script = get_parametro_script()
+            else:
+                backend_script = os.path.join("backend", "Parametro.py")
+                
             file_path = ExcelManager.get_file_path()
             self.start_optimization_process(file_path, backend_script)
         else:
@@ -518,59 +664,95 @@ class SAIDIAnalysisApp:
             self.progress_window.cancelled = True
             
     def start_optimization_process(self, file_path, backend_script):
-        """Iniciar el proceso de optimización en un hilo separado"""
+        """Iniciar el proceso de optimización en un hilo separado con soporte PyInstaller"""
         def run_optimization():
             try:
                 # Verificar que el archivo de progreso existe antes de iniciar el proceso
                 if not os.path.exists(self.temp_progress_file):
-                    print(f"ERROR: Archivo de progreso no existe: {self.temp_progress_file}")
+                    logger.error(f"Archivo de progreso no existe: {self.temp_progress_file}")
                     self.ui.update_status("Error: No se pudo crear archivo de comunicación")
+                    return
+                
+                # Verificar que el backend script existe
+                if not os.path.exists(backend_script):
+                    logger.error(f"Script backend no existe: {backend_script}")
+                    self.ui.update_status("Error: Script backend no encontrado")
                     return
                 
                 # Ejecutar el script de optimización
                 env = os.environ.copy()
                 env['PYTHONIOENCODING'] = 'utf-8'
                 
-                cmd_args = [sys.executable, backend_script, 
+                # En PyInstaller, configurar PYTHONPATH
+                if self.is_frozen_app and PATH_UTILS_AVAILABLE:
+                    current_pythonpath = env.get('PYTHONPATH', '')
+                    if current_pythonpath:
+                        env['PYTHONPATH'] = f"{path_manager.base_path}{os.pathsep}{current_pythonpath}"
+                    else:
+                        env['PYTHONPATH'] = path_manager.base_path
+                
+                # Determinar ejecutable Python
+                if self.is_frozen_app:
+                    python_executable = sys.executable
+                else:
+                    python_executable = sys.executable
+                
+                cmd_args = [python_executable, backend_script, 
                         '--file', file_path, 
                         '--progress', self.temp_progress_file]
                 
-                print(f"DEBUG: Iniciando proceso con archivo de progreso: {self.temp_progress_file}")
-                print(f"DEBUG: Comando: {' '.join(cmd_args)}")
+                logger.info(f"Iniciando proceso con archivo de progreso: {self.temp_progress_file}")
+                logger.info(f"Comando: {' '.join(cmd_args)}")
                 
-                # Verificar que el backend script existe
-                if not os.path.exists(backend_script):
-                    print(f"ERROR: Script backend no existe: {backend_script}")
-                    self.ui.update_status("Error: Script backend no encontrado")
-                    return
+                # Configurar flags de creación de proceso
+                creation_flags = 0
+                if os.name == 'nt':  # Windows
+                    creation_flags = subprocess.CREATE_NO_WINDOW
                 
-                # Ejecutar desde el directorio actual (Interfaz)
-                process = subprocess.Popen(cmd_args, env=env)
+                # Ejecutar desde el directorio correcto
+                if PATH_UTILS_AVAILABLE:
+                    cwd = path_manager.base_path
+                else:
+                    cwd = os.getcwd()
+                    
+                process = subprocess.Popen(cmd_args, env=env, cwd=cwd, creationflags=creation_flags)
                 
                 # Monitorear progreso
                 self.monitor_progress()
                 
                 # Esperar a que termine el proceso
-                process.wait()
+                return_code = process.wait()
                 
-                if process.returncode == 0:
-                    self.ui.update_status("Optimización completada exitosamente")
-                    print("DEBUG: Proceso completado exitosamente")
+                if return_code == 0:
+                    status_msg = "Optimización completada exitosamente"
+                    if self.is_frozen_app:
+                        status_msg += " (Ejecutable)"
+                    self.ui.update_status(status_msg)
+                    logger.info("Proceso completado exitosamente")
                     # Dar tiempo extra para procesar resultados finales
                     time.sleep(2)
                     if self.progress_window and not self.progress_window.results_shown:
                         self.progress_window.check_and_show_results()
-                elif process.returncode == 130:  # Código de cancelación
-                    self.ui.update_status("Optimización cancelada por el usuario")
-                    print("DEBUG: Proceso cancelado por el usuario")
+                elif return_code == 130:  # Código de cancelación
+                    status_msg = "Optimización cancelada por el usuario"
+                    if self.is_frozen_app:
+                        status_msg += " (Ejecutable)"
+                    self.ui.update_status(status_msg)
+                    logger.info("Proceso cancelado por el usuario")
                 else:
+                    error_msg = f"Error durante la optimización (código: {return_code})"
+                    if self.is_frozen_app:
+                        error_msg += " (Ejecutable)"
                     self.ui.update_status("Error en optimización")
-                    messagebox.showerror("Error", f"Error durante la optimización (código: {process.returncode})")
+                    messagebox.showerror("Error", error_msg)
                     
             except Exception as e:
+                error_msg = f"Error inesperado: {str(e)}"
+                if self.is_frozen_app:
+                    error_msg += " (Ejecutable)"
                 self.ui.update_status("Error inesperado")
-                messagebox.showerror("Error", f"Error inesperado: {str(e)}")
-                print(f"ERROR: {e}")
+                messagebox.showerror("Error", error_msg)
+                logger.error(f"Error: {e}")
             finally:
                 # Asegurar que se marque como terminado
                 self.root.after(1000, self.on_optimization_finished)
@@ -580,14 +762,12 @@ class SAIDIAnalysisApp:
         thread.start()
 
     def monitor_progress(self):
-        """Monitorear el progreso del proceso"""
+        """Monitorear el progreso del proceso con manejo robusto de errores"""
         def update_progress():
             try:
                 if os.path.exists(self.temp_progress_file):
                     with open(self.temp_progress_file, 'r', encoding='utf-8') as f:
                         data = json.load(f)
-                    
-                    print(f"DEBUG: Datos leídos del archivo: {data.keys()}")
                     
                     # Actualizar variables globales
                     global PROGRESS_DATA
@@ -596,7 +776,7 @@ class SAIDIAnalysisApp:
                     PROGRESS_DATA['current_model'] = data.get('current_model', '')
                     PROGRESS_DATA['top_models'] = data.get('top_models', [])
                     
-                    print(f"DEBUG: Progreso: {PROGRESS_DATA['percentage']}%, Top models: {len(PROGRESS_DATA['top_models'])}")
+                    logger.debug(f"Progreso: {PROGRESS_DATA['percentage']}%, Top models: {len(PROGRESS_DATA['top_models'])}")
                     
                     # Actualizar ventana de progreso
                     if self.progress_window and hasattr(self.progress_window, 'window') and self.progress_window.window.winfo_exists():
@@ -611,14 +791,8 @@ class SAIDIAnalysisApp:
                             PROGRESS_DATA['top_models'] and 
                             not self.progress_window.results_shown):
                             
-                            print(f"DEBUG: Mostrando resultados finales - {len(PROGRESS_DATA['top_models'])} modelos")
+                            logger.info(f"Mostrando resultados finales - {len(PROGRESS_DATA['top_models'])} modelos")
                             self.progress_window.show_results(PROGRESS_DATA['top_models'])
-                            
-                            # Limpiar el archivo temporal
-                            try:
-                                os.remove(self.temp_progress_file)
-                            except:
-                                pass
                             return
                             
                 # Continuar monitoreando si el proceso no ha terminado
@@ -640,7 +814,7 @@ class SAIDIAnalysisApp:
                     self.root.after(500, update_progress)
                     
             except json.JSONDecodeError as e:
-                print(f"DEBUG: Error JSON: {e} - continuando...")
+                logger.debug(f"Error JSON: {e} - continuando...")
                 if (self.progress_window and 
                     not self.progress_window.cancelled and 
                     hasattr(self.progress_window, 'window') and 
@@ -649,7 +823,7 @@ class SAIDIAnalysisApp:
                     self.root.after(500, update_progress)
                     
             except Exception as e:
-                print(f"ERROR: Monitoreando progreso: {e}")
+                logger.error(f"Error monitoreando progreso: {e}")
                 if (self.progress_window and 
                     not self.progress_window.cancelled and 
                     hasattr(self.progress_window, 'window') and 
@@ -661,20 +835,26 @@ class SAIDIAnalysisApp:
             
     def on_prediction_finished(self):
         """Callback cuando termina el análisis predictivo"""
-        print("DEBUG: Análisis predictivo terminado")
+        logger.info("Análisis predictivo terminado")
         self.is_running_prediction = False
         self.ui.update_running_state('prediction', False)
-        self.ui.update_status("Análisis predictivo completado. Sistema listo para nuevas operaciones.")
+        status_msg = "Análisis predictivo completado. Sistema listo para nuevas operaciones."
+        if self.is_frozen_app:
+            status_msg += " (Ejecutable)"
+        self.ui.update_status(status_msg)
             
     def on_behavior_finished(self):
         """Callback cuando termina el análisis de comportamiento"""
-        print("DEBUG: Análisis de comportamiento terminado")
+        logger.info("Análisis de comportamiento terminado")
         self.is_running_behavior = False
         self.ui.update_running_state('behavior', False)
-        self.ui.update_status("Análisis de comportamiento completado. Sistema listo para nuevas operaciones.")
+        status_msg = "Análisis de comportamiento completado. Sistema listo para nuevas operaciones."
+        if self.is_frozen_app:
+            status_msg += " (Ejecutable)"
+        self.ui.update_status(status_msg)
         
     def on_optimization_finished(self):
-        """Callback cuando termina la optimización"""
+        """Callback cuando termina la optimización con limpieza mejorada"""
         self.is_running_optimization = False
         self.ui.update_running_state('optimization', False)
         
@@ -683,18 +863,46 @@ class SAIDIAnalysisApp:
             try:
                 if os.path.exists(self.temp_progress_file):
                     os.remove(self.temp_progress_file)
-                    print(f"Archivo temporal limpiado: {self.temp_progress_file}")
+                    logger.info(f"Archivo temporal limpiado: {self.temp_progress_file}")
             except Exception as e:
-                print(f"Advertencia: No se pudo limpiar archivo temporal: {e}")
+                logger.warning(f"No se pudo limpiar archivo temporal: {e}")
             finally:
                 self.temp_progress_file = None
         
-        self.ui.update_status("Optimización de parámetros completada. Sistema listo para nuevas operaciones.")
+        # Limpiar otros archivos temporales antiguos
+        if PATH_UTILS_AVAILABLE:
+            try:
+                cleanup_old_temp_files()
+            except Exception as e:
+                logger.warning(f"Error limpiando archivos temporales: {e}")
+        
+        status_msg = "Optimización de parámetros completada. Sistema listo para nuevas operaciones."
+        if self.is_frozen_app:
+            status_msg += " (Ejecutable)"
+        self.ui.update_status(status_msg)
 
 
 def main():
-    """Función principal de la aplicación"""
+    """Función principal de la aplicación con soporte PyInstaller"""
     root = tk.Tk()
+    
+    # Configurar logging para la aplicación
+    if PATH_UTILS_AVAILABLE and path_manager.is_frozen:
+        # En executable, log a archivo
+        log_file = os.path.join(path_manager.executable_dir, "saidi_analysis.log")
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s [%(levelname)s] %(message)s',
+            handlers=[
+                logging.FileHandler(log_file, encoding='utf-8'),
+                logging.StreamHandler()
+            ]
+        )
+        logger.info(f"Log configurado para executable: {log_file}")
+    else:
+        # En desarrollo, solo consola
+        logging.basicConfig(level=logging.INFO, format='[MAIN] %(levelname)s: %(message)s')
+    
     app = SAIDIAnalysisApp(root)
     
     # Iniciar aplicación

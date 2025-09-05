@@ -5,31 +5,59 @@ from datetime import datetime
 import threading
 import time
 
+# AGREGAR: Importar sistema de rutas PyInstaller
+try:
+    from path_utils import path_manager, get_temp_file, cleanup_old_temp_files, is_frozen
+    PATH_UTILS_AVAILABLE = True
+    print("Sistema de rutas PyInstaller cargado en parametros_bridge.py")
+except ImportError:
+    PATH_UTILS_AVAILABLE = False
+    print("Sistema de rutas no disponible en parametros_bridge.py - modo compatibilidad")
+
 class ParametrosBridge:
     """Clase para comunicación entre Parametro.py y selectorOrder.py"""
     
     def __init__(self):
-        self.bridge_file = "temp/parametros_bridge.json"
+        # Usar path_utils si está disponible
+        if PATH_UTILS_AVAILABLE:
+            self.bridge_file = path_manager.get_temp_file("parametros_bridge.json")
+        else:
+            self.bridge_file = "temp/parametros_bridge.json"
+        
         self.last_update = None
         self.top_models = []
+        print(f"Bridge inicializado - Archivo: {self.bridge_file}")
         
     def ensure_temp_directory(self):
-        """Asegurar que existe el directorio temporal"""
+        """Asegurar que existe el directorio temporal con soporte PyInstaller"""
         temp_dir = os.path.dirname(self.bridge_file)
         if temp_dir and not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
+            try:
+                os.makedirs(temp_dir)
+            except Exception as e:
+                if PATH_UTILS_AVAILABLE:
+                    # Fallback: usar directorio temporal de path_utils
+                    self.bridge_file = path_manager.get_temp_file("parametros_bridge_fallback.json")
+                    temp_dir = os.path.dirname(self.bridge_file)
+                    os.makedirs(temp_dir, exist_ok=True)
+                    print(f"Fallback bridge file: {self.bridge_file}")
+                else:
+                    raise e
     
     def save_top_models(self, top_models):
         """Guardar los top 3 modelos desde Parametro.py"""
         try:
             self.ensure_temp_directory()
             
-            # Preparar datos para guardar
+            # Preparar datos para guardar con información de modo
+            execution_mode = "PyInstaller" if (PATH_UTILS_AVAILABLE and is_frozen()) else "Desarrollo"
             bridge_data = {
                 'timestamp': datetime.now().isoformat(),
                 'top_models': top_models,
                 'status': 'updated',
-                'source': 'Parametro.py'
+                'source': 'Parametro.py',
+                'execution_mode': execution_mode,
+                'path_utils_available': PATH_UTILS_AVAILABLE
             }
             
             # Guardar archivo

@@ -4,6 +4,14 @@ warnings.filterwarnings('ignore')
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+try:
+    from path_utils import path_manager, get_temp_file, cleanup_old_temp_files, is_frozen
+    PATH_UTILS_AVAILABLE = True
+    print("Sistema de rutas PyInstaller cargado en Modelo.py")
+except ImportError:
+    PATH_UTILS_AVAILABLE = False
+    print("Sistema de rutas no disponible en Modelo.py - modo compatibilidad")
+
 from matplotlib.ticker import MaxNLocator
 import argparse
 import sys
@@ -91,8 +99,18 @@ def calcular_metricas_modelo(serie, order, seasonal_order):
 
 def analizar_saidi(file_path, order=(4, 0, 0), seasonal_order=(1, 0, 0, 8)):
     try:
+        # Información del modo de ejecución
+        execution_mode = "PyInstaller" if (PATH_UTILS_AVAILABLE and is_frozen()) else "Desarrollo"
+        print(f"Modo de ejecución: {execution_mode}")
         print(f"Analizando archivo: {file_path}")
         print(f"Parámetros SARIMAX: order={order}, seasonal_order={seasonal_order}")
+        
+        # Limpiar archivos temporales antiguos
+        if PATH_UTILS_AVAILABLE:
+            try:
+                cleanup_old_temp_files()
+            except Exception as e:
+                print(f"Warning: No se pudieron limpiar archivos temporales: {e}")
         
         # === Cargar datos ===
         df = pd.read_excel(file_path, sheet_name="Hoja1")
@@ -199,6 +217,8 @@ def analizar_saidi(file_path, order=(4, 0, 0), seasonal_order=(1, 0, 0, 8)):
         # === MOSTRAR RESUMEN ===
         print(f"\n" + "="*60)
         print("RESUMEN DE PREDICCIONES")
+        if PATH_UTILS_AVAILABLE and is_frozen():
+            print("(EJECUTABLE PYINSTALLER)")
         print("="*60)
         print(f"Predicciones generadas: {len(pred_mean)}")
         print(f"Período de entrenamiento: {historico.index[0].strftime('%Y-%m')} a {historico.index[-1].strftime('%Y-%m')}")
