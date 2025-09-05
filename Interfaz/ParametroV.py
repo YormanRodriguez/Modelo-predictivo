@@ -10,10 +10,10 @@ import tempfile
 try:
     from backend.parametros_bridge import get_updated_presets
     BRIDGE_AVAILABLE = True
-    print("✓ Bridge de parámetros cargado en ParametroV")
+    print("Bridge de parámetros cargado en ParametroV")
 except ImportError:
     BRIDGE_AVAILABLE = False
-    print("⚠ Bridge de parámetros no disponible en ParametroV")
+    print("Bridge de parámetros no disponible en ParametroV")
 
 # Variables globales para almacenar datos de progreso y modelos
 PROGRESS_DATA = {
@@ -39,7 +39,7 @@ class ProgressWindow:
         else:
             # Crear archivo temporal en directorio válido
             self.progress_file = tempfile.mktemp(suffix='_progress.json', prefix='saidi_')
-            print(f"⚠ Progress file corregido: {self.progress_file}")
+            print(f"Progress file corregido: {self.progress_file}")
             
         # NUEVA VARIABLE: Archivo de cancelación específico
         self.cancel_file = self.progress_file.replace('.json', '_cancel.json')
@@ -56,9 +56,9 @@ class ProgressWindow:
         try:
             if os.path.exists(self.cancel_file):
                 os.remove(self.cancel_file)
-                print(f"✓ Archivo de cancelación previo eliminado: {self.cancel_file}")
+                print(f"Archivo de cancelación previo eliminado: {self.cancel_file}")
         except Exception as e:
-            print(f"⚠ Error limpiando archivos previos: {e}")
+            print(f"Error limpiando archivos previos: {e}")
         
     def setup_window(self, title):
         """Configurar la ventana modal con tamaño optimizado"""
@@ -106,25 +106,25 @@ class ProgressWindow:
             with open(self.cancel_file, 'w', encoding='utf-8') as f:
                 json.dump(cancel_data, f, ensure_ascii=False, indent=2)
             
-            print(f"✓ Archivo de cancelación creado: {self.cancel_file}")
+            print(f"Archivo de cancelación creado: {self.cancel_file}")
             return True
             
         except PermissionError as e:
-            print(f"✗ Error de permisos creando archivo de cancelación: {e}")
+            print(f"Error de permisos creando archivo de cancelación: {e}")
             # Intentar crear en directorio temporal como fallback
             try:
                 fallback_file = tempfile.mktemp(suffix='_cancel_fallback.json', prefix='saidi_')
                 with open(fallback_file, 'w', encoding='utf-8') as f:
                     json.dump(cancel_data, f, ensure_ascii=False, indent=2)
                 self.cancel_file = fallback_file
-                print(f"✓ Archivo de cancelación creado en fallback: {fallback_file}")
+                print(f"Archivo de cancelación creado en fallback: {fallback_file}")
                 return True
             except Exception as fallback_error:
-                print(f"✗ Error en fallback: {fallback_error}")
+                print(f"Error en fallback: {fallback_error}")
                 return False
                 
         except Exception as e:
-            print(f"✗ Error inesperado creando archivo de cancelación: {e}")
+            print(f"Error inesperado creando archivo de cancelación: {e}")
             return False
 
     def cancel_process(self):
@@ -133,7 +133,7 @@ class ProgressWindow:
                               "¿Está seguro que desea cancelar el proceso de optimización?\n\n"
                               "Esto detendrá inmediatamente todas las iteraciones en curso."):
             
-            print("🚫 Usuario solicitó cancelación del proceso")
+            print("Usuario solicitó cancelación del proceso")
             
             # Marcar como cancelado localmente PRIMERO
             self.cancelled = True
@@ -148,14 +148,14 @@ class ProgressWindow:
             if cancel_success:
                 # Mostrar mensaje de éxito
                 messagebox.showinfo("Proceso Cancelado", 
-                                   "🚫 Solicitud de cancelación enviada correctamente.\n\n"
+                                   "Solicitud de cancelación enviada correctamente.\n\n"
                                    "Las iteraciones se detendrán en los próximos momentos.\n"
                                    "Puede cerrar esta ventana cuando lo desee.")
                 print("✓ Cancelación procesada exitosamente")
             else:
                 # Mostrar advertencia pero permitir continuar
                 messagebox.showwarning("Cancelación con Limitaciones",
-                                     "⚠ No se pudo crear el archivo de cancelación automática.\n\n"
+                                     "No se pudo crear el archivo de cancelación automática.\n\n"
                                      "Sin embargo, el proceso ha sido marcado como cancelado localmente.\n"
                                      "Si el proceso continúa, puede cerrar la aplicación principal para detenerlo.")
                 print("⚠ Cancelación procesada con limitaciones")
@@ -165,9 +165,9 @@ class ProgressWindow:
         try:
             # Actualizar indicadores visuales
             self.percentage_var.set("CANCELADO")
-            self.iteration_var.set("🚫 Proceso cancelado por el usuario")
+            self.iteration_var.set("Proceso cancelado por el usuario")
             self.current_model_var.set("Deteniendo iteraciones y limpiando recursos...")
-            self.activity_var.set("⚠️")
+            self.activity_var.set("Advertencia")
             
             # Actualizar botones
             self.cancel_btn.configure(
@@ -193,10 +193,10 @@ class ProgressWindow:
             except:
                 pass  # Continuar aunque falle el estilo
                 
-            print("✓ Interfaz de cancelación actualizada")
+            print("Interfaz de cancelación actualizada")
             
         except Exception as e:
-            print(f"⚠ Error actualizando interfaz de cancelación: {e}")
+            print(f"Error actualizando interfaz de cancelación: {e}")
 
     # [Resto de métodos permanecen igual - solo agrego el método create_interface y otros necesarios para completitud]
     

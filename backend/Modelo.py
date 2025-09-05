@@ -140,14 +140,14 @@ def analizar_saidi(file_path, order=(4, 0, 0), seasonal_order=(1, 0, 0, 8)):
         
         if metricas:
             print(f"MÉTRICAS DEL MODELO:")
-            print(f"• RMSE: {metricas['rmse']:.4f}")
-            print(f"• MAE: {metricas['mae']:.4f}")
-            print(f"• MAPE: {metricas['mape']:.1f}%")
-            print(f"• R²: {metricas['r2_score']:.3f}")
-            print(f"• Precisión Final: {metricas['precision_final']:.1f}%")
-            print(f"• AIC: {metricas['aic']:.2f}")
-            print(f"• BIC: {metricas['bic']:.2f}")
-            print(f"• Validación: {metricas['pct_validacion']*100:.0f}% ({metricas['n_test']} obs.)")
+            print(f"RMSE: {metricas['rmse']:.4f}")
+            print(f"MAE: {metricas['mae']:.4f}")
+            print(f"MAPE: {metricas['mape']:.1f}%")
+            print(f"R²: {metricas['r2_score']:.3f}")
+            print(f"Precisión Final: {metricas['precision_final']:.1f}%")
+            print(f"AIC: {metricas['aic']:.2f}")
+            print(f"BIC: {metricas['bic']:.2f}")
+            print(f"Validación: {metricas['pct_validacion']*100:.0f}% ({metricas['n_test']} obs.)")
             
             # Interpretación de precisión
             precision = metricas['precision_final']
@@ -177,7 +177,7 @@ def analizar_saidi(file_path, order=(4, 0, 0), seasonal_order=(1, 0, 0, 8)):
                 enforce_invertibility=False
             )
             results = model.fit(disp=False)
-            print("✓ Modelo ajustado exitosamente")
+            print("Modelo ajustado exitosamente")
         except Exception as e:
             print(f"ERROR: No se pudo ajustar el modelo: {e}")
             print("Los parámetros seleccionados pueden no ser compatibles con los datos.")
@@ -187,7 +187,7 @@ def analizar_saidi(file_path, order=(4, 0, 0), seasonal_order=(1, 0, 0, 8)):
         try:
             pred = results.get_prediction(start=faltantes.index[0], end=faltantes.index[-1])
             pred_mean = pred.predicted_mean
-            print(f"✓ Predicciones generadas para {len(pred_mean)} períodos")
+            print(f"Predicciones generadas para {len(pred_mean)} períodos")
         except Exception as e:
             print(f"ERROR: No se pudieron generar predicciones: {e}")
             sys.exit(1)
@@ -315,7 +315,7 @@ def analizar_saidi(file_path, order=(4, 0, 0), seasonal_order=(1, 0, 0, 8)):
             ax.set_xticklabels(labels_personalizadas, rotation=0, ha='center', fontsize=10)
 
         # Configuración del gráfico principal con título dinámico
-        precision_text = f" - Precisión: {metricas['precision_final']:.1f}%" if metricas['precision_final'] > 0 else ""
+        precision_text = f"Precisión: {metricas['precision_final']:.1f}%" if metricas['precision_final'] > 0 else ""
         plt.title(f"SAIDI: Histórico vs Predicción SARIMAX{order}x{seasonal_order}{precision_text}", 
                  fontsize=18, fontweight='bold', pad=25)
         
@@ -338,7 +338,7 @@ def analizar_saidi(file_path, order=(4, 0, 0), seasonal_order=(1, 0, 0, 8)):
         
         # Texto explicativo con información de parámetros
         plt.figtext(0.5, 0.02, 
-                   f"Modelo SARIMAX{order}x{seasonal_order} - Línea azul: datos históricos, naranja: predicciones futuras", 
+                   f"Modelo SARIMAX{order}x{seasonal_order} -Línea azul: datos históricos, naranja: predicciones futuras", 
                    ha='center', fontsize=12, style='italic', color='darkblue', weight='bold',
                    bbox=dict(boxstyle='round,pad=0.4', facecolor='lightyellow', alpha=0.8))
         

@@ -20,7 +20,7 @@ try:
     # Primero intentar importar desde el mismo directorio (cuando se ejecuta desde backend/)
     from parametros_bridge import save_top_models_to_bridge, clear_bridge_data
     BRIDGE_AVAILABLE = True
-    print("✓ Bridge de parámetros cargado correctamente")
+    print("Bridge de parámetros cargado correctamente")
 except ImportError:
     try:
         # Fallback: cuando se ejecuta desde Interfaz/, agregar backend al path
@@ -33,10 +33,10 @@ except ImportError:
         
         from parametros_bridge import save_top_models_to_bridge, clear_bridge_data
         BRIDGE_AVAILABLE = True
-        print("✓ Bridge de parámetros cargado correctamente (fallback)")
+        print("Bridge de parámetros cargado correctamente (fallback)")
     except ImportError as e:
         BRIDGE_AVAILABLE = False
-        print(f"⚠ Bridge de parámetros no disponible: {e}")
+        print(f"Bridge de parámetros no disponible: {e}")
 
 # Variables globales para la interfaz
 PROGRESS_PERCENTAGE = 0
@@ -146,7 +146,7 @@ def handle_graceful_shutdown(progress_file):
     print(f" Modelos evaluados: {len(TOP_3_MODELS)}")
     
     if TOP_3_MODELS:
-        print(f"🏆 Mejor modelo encontrado hasta ahora:")
+        print(f"Mejor modelo encontrado hasta ahora:")
         best = TOP_3_MODELS[0]
         print(f"   Precisión: {best['precision_final']:.1f}%")
         print(f"   Parámetros: order={best['order']}, seasonal_order={best['seasonal_order']}")
@@ -510,7 +510,7 @@ def analizar_saidi(file_path, progress_file=None):
         # LIMPIAR BRIDGE AL INICIO
         if BRIDGE_AVAILABLE:
             clear_bridge_data()
-            print("✓ Bridge limpiado para nuevo análisis")
+            print("Bridge limpiado para nuevo análisis")
         
         if progress_file:
             update_progress(progress_file, 5, "Cargando datos del archivo Excel...", "")

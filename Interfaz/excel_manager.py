@@ -62,9 +62,9 @@ class ExcelManager:
                 cls._file_path = file_path
                 cls._validated = True
                 
-                print("✓ Archivo Excel cargado y validado exitosamente")
-                print(f"✓ Dimensiones: {df.shape[0]} filas x {df.shape[1]} columnas")
-                print(f"✓ Columnas detectadas: {list(df.columns)}")
+                print("Archivo Excel cargado y validado exitosamente")
+                print(f"Dimensiones: {df.shape[0]} filas x {df.shape[1]} columnas")
+                print(f"Columnas detectadas: {list(df.columns)}")
                 
                 return True
             else:
@@ -116,16 +116,16 @@ class ExcelManager:
                 cls._file_path = file_path
                 cls._validated = True
                 
-                print("✓ Archivo Excel cargado y validado exitosamente")
-                print(f"✓ Dimensiones: {df.shape[0]} filas x {df.shape[1]} columnas")
-                print(f"✓ Columnas detectadas: {list(df.columns)}")
+                print("Archivo Excel cargado y validado exitosamente")
+                print(f"Dimensiones: {df.shape[0]} filas x {df.shape[1]} columnas")
+                print(f"Columnas detectadas: {list(df.columns)}")
                 
                 messagebox.showinfo(
                     "Excel Cargado Exitosamente",
                     f"Archivo: {os.path.basename(file_path)}\n"
                     f"Dimensiones: {df.shape[0]} filas x {df.shape[1]} columnas\n"
                     f"Columnas detectadas: {', '.join(df.columns[:3])}{'...' if len(df.columns) > 3 else ''}\n\n"
-                    f"✓ Estructura validada correctamente"
+                    f"Estructura validada correctamente"
                 )
                 return True
             else:

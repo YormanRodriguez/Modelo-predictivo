@@ -39,7 +39,7 @@ def setup_bridge_import():
     print(f"DEBUG: Buscando bridge en: {bridge_file}")
     
     if os.path.exists(bridge_file):
-        print("DEBUG: ✓ Archivo bridge encontrado")
+        print("DEBUG: Archivo bridge encontrado")
         
         # Agregar backend al path
         if backend_dir not in sys.path:
@@ -53,31 +53,31 @@ def setup_bridge_import():
             clear_bridge_data = parametros_bridge.clear_bridge_data
             
             BRIDGE_AVAILABLE = True
-            print("✓ Bridge de parámetros cargado desde backend")
+            print("Bridge de parámetros cargado desde backend")
             
             # Probar funciones
             try:
                 presets = get_updated_presets()
                 if presets:
-                    print(f"✓ Presets dinámicos disponibles: {len(presets)}")
+                    print(f"Presets dinámicos disponibles: {len(presets)}")
                     for preset_name, preset_data in presets.items():
                         model = preset_data['model']
                         precision = model.get('precision_final', 0)
                         print(f"  - {preset_name}: Precisión {precision:.1f}%")
                 else:
-                    print("⚠ No hay presets optimizados disponibles (ejecute primero el optimizador)")
+                    print("No hay presets optimizados disponibles (ejecute primero el optimizador)")
                 return True
                 
             except Exception as func_error:
-                print(f"⚠ Error probando funciones bridge: {func_error}")
+                print(f"Error probando funciones bridge: {func_error}")
                 return True  # Bridge disponible pero sin datos
                 
         except ImportError as import_error:
-            print(f"✗ Error importando bridge: {import_error}")
+            print(f"Error importando bridge: {import_error}")
             return False
             
     else:
-        print("✗ No se encontró parametros_bridge.py en backend")
+        print("No se encontró parametros_bridge.py en backend")
         return False
 
 # Ejecutar configuración del bridge
@@ -140,7 +140,7 @@ class ParameterSelectorWindow:
             if updated_presets:
                 self.dynamic_presets = updated_presets
                 self.presets_loaded = True
-                print("✓ Presets dinámicos cargados exitosamente:")
+                print("Presets dinámicos cargados exitosamente:")
                 for preset_name, preset_data in updated_presets.items():
                     model = preset_data['model']
                     precision = model.get('precision_final', 0)
@@ -195,7 +195,7 @@ class ParameterSelectorWindow:
     def load_bridge_presets(self):
         """NUEVA FUNCIÓN: Cargar presets desde el bridge"""
         if not BRIDGE_AVAILABLE:
-            print("⚠ Bridge no disponible, usando presets por defecto")
+            print("Bridge no disponible, usando presets por defecto")
             return
             
         try:
@@ -203,12 +203,12 @@ class ParameterSelectorWindow:
             if updated_presets:
                 self.dynamic_presets = updated_presets
                 self.presets_loaded = True
-                print("✓ Presets dinámicos cargados desde bridge:")
+                print("Presets dinámicos cargados desde bridge:")
                 for preset_name, preset_data in updated_presets.items():
                     model = preset_data['model']
                     print(f"  - {preset_name}: order={model['order']}, seasonal_order={model['seasonal_order']}")
             else:
-                print("⚠ No se encontraron presets actualizados en bridge")
+                print("No se encontraron presets actualizados en bridge")
                 
         except Exception as e:
             print(f"Error cargando presets del bridge: {e}")
@@ -339,7 +339,7 @@ class ParameterSelectorWindow:
         
         if self.presets_loaded:
             # Bridge funcionando correctamente
-            status_icon = "✅"
+            status_icon = "Funcionando"
             status_text = "Conectado - Presets actualizados con resultados de optimización"
             status_color = '#10b981'
             bg_color = '#ecfdf5'
@@ -349,7 +349,7 @@ class ParameterSelectorWindow:
                         "automáticamente con los mejores parámetros encontrados por el optimizador.")
         else:
             # Bridge no tiene datos
-            status_icon = "⚠️"
+            status_icon = "Advertencia"
             status_text = "Desconectado - Usando presets predeterminados"
             status_color = '#f59e0b'
             bg_color = '#fffbeb'
@@ -405,7 +405,7 @@ class ParameterSelectorWindow:
         
     def create_info_section(self, parent):
         """Crear sección de información sobre SARIMAX - VERSIÓN COMPACTA"""
-        info_frame = tk.LabelFrame(parent, text="ℹ️ Información sobre Parámetros SARIMAX", 
+        info_frame = tk.LabelFrame(parent, text="ℹInformación sobre Parámetros SARIMAX", 
                                   font=('Segoe UI', 11, 'bold'),
                                   bg='#f8fafc', fg='#1e40af',
                                   relief='ridge', bd=2)
@@ -425,7 +425,7 @@ class ParameterSelectorWindow:
         
     def create_order_section(self, parent):
         """Crear sección de parámetros no estacionales - ESPACIADO OPTIMIZADO"""
-        order_frame = tk.LabelFrame(parent, text="📊 Parámetros No Estacionales - order(p,d,q)", 
+        order_frame = tk.LabelFrame(parent, text="Parámetros No Estacionales - order(p,d,q)", 
                                    font=('Segoe UI', 11, 'bold'),
                                    bg='#f8fafc', fg='#059669',
                                    relief='ridge', bd=2)
@@ -472,7 +472,7 @@ class ParameterSelectorWindow:
             
     def create_seasonal_section(self, parent):
         """Crear sección de parámetros estacionales - ESPACIADO OPTIMIZADO"""
-        seasonal_frame = tk.LabelFrame(parent, text="🔄 Parámetros Estacionales - seasonal_order(P,D,Q,s)", 
+        seasonal_frame = tk.LabelFrame(parent, text="Parámetros Estacionales - seasonal_order(P,D,Q,s)", 
                                       font=('Segoe UI', 11, 'bold'),
                                       bg='#f8fafc', fg='#dc2626',
                                       relief='ridge', bd=2)
@@ -530,7 +530,7 @@ class ParameterSelectorWindow:
         
     def create_presets_section(self, parent):
         """Crear sección de configuraciones predefinidas - CON PRESETS DINÁMICOS"""
-        presets_frame = tk.LabelFrame(parent, text="⚡ Configuraciones Predefinidas", 
+        presets_frame = tk.LabelFrame(parent, text="Configuraciones Predefinidas", 
                                      font=('Segoe UI', 11, 'bold'),
                                      bg='#f8fafc', fg='#7c3aed',
                                      relief='ridge', bd=2)
@@ -616,7 +616,7 @@ class ParameterSelectorWindow:
         
     def create_validation_section(self, parent):
         """Crear sección de validación de parámetros - SIN BOTÓN REDUNDANTE"""
-        validation_frame = tk.LabelFrame(parent, text="✅ Vista Previa de Configuración", 
+        validation_frame = tk.LabelFrame(parent, text="Vista Previa de Configuración", 
                                         font=('Segoe UI', 11, 'bold'),
                                         bg='#f8fafc', fg='#ea580c',
                                         relief='ridge', bd=2)
@@ -635,7 +635,7 @@ class ParameterSelectorWindow:
         
         # Texto informativo sobre actualización automática
         info_label = tk.Label(preview_frame,
-                             text="💡 La vista previa se actualiza automáticamente al cambiar los parámetros",
+                             text="La vista previa se actualiza automáticamente al cambiar los parámetros",
                              font=('Segoe UI', 9, 'italic'),
                              bg='#f8fafc', fg='#6b7280')
         info_label.pack(pady=(6, 0))
@@ -651,7 +651,7 @@ class ParameterSelectorWindow:
         
         # Texto de instrucción - MÁS COMPACTO
         instruction_label = tk.Label(parent,
-                                   text="👇 SELECCIONE UNA ACCIÓN PARA CONTINUAR 👇",
+                                   text="SELECCIONE UNA ACCIÓN PARA CONTINUAR",
                                    font=('Segoe UI', 11, 'bold'),
                                    bg='#dbeafe', fg='#1e40af',
                                    relief='solid', bd=2, padx=10, pady=6)
@@ -665,7 +665,7 @@ class ParameterSelectorWindow:
         center_frame.pack(expand=True)
         
         # Botón Cancelar - TAMAÑO LIGERAMENTE REDUCIDO
-        cancel_btn = tk.Button(center_frame, text="❌ CANCELAR",
+        cancel_btn = tk.Button(center_frame, text="CANCELAR",
                               command=self.on_cancel,
                               font=('Segoe UI', 11, 'bold'),
                               bg='#ef4444', fg='white',
@@ -676,7 +676,7 @@ class ParameterSelectorWindow:
         cancel_btn.pack(side='left', padx=(0, 12))
         
         # Botón Confirmar y Ejecutar - TAMAÑO LIGERAMENTE REDUCIDO
-        confirm_btn = tk.Button(center_frame, text="✅ CONFIRMAR Y EJECUTAR ANÁLISIS",
+        confirm_btn = tk.Button(center_frame, text="CONFIRMAR Y EJECUTAR ANÁLISIS",
                                command=self.on_confirm,
                                font=('Segoe UI', 11, 'bold'),
                                bg='#059669', fg='white',
@@ -713,7 +713,7 @@ class ParameterSelectorWindow:
         
         # Mostrar atajos de teclado - MÁS COMPACTO
         shortcuts_label = tk.Label(buttons_frame,
-                                  text="💡 Atajos de Teclado: Enter = Confirmar | Escape = Cancelar",
+                                  text="Atajos de Teclado: Enter = Confirmar | Escape = Cancelar",
                                   font=('Segoe UI', 9, 'italic'),
                                   bg='#f8fafc', fg='#6b7280')
         shortcuts_label.pack(pady=(6, 0))
@@ -763,7 +763,7 @@ class ParameterSelectorWindow:
             if self.validate_parameters():
                 self.config_preview_label.config(text=config_text, fg='#1e40af', bg='#dbeafe')
             else:
-                self.config_preview_label.config(text=f"{config_text} - ⚠️ REVISAR PARÁMETROS", 
+                self.config_preview_label.config(text=f"{config_text} - REVISAR PARÁMETROS", 
                                                 fg='#dc2626', bg='#fee2e2')
                 
         except Exception as e:

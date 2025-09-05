@@ -39,7 +39,7 @@ class ParametrosBridge:
             self.top_models = top_models
             self.last_update = datetime.now()
             
-            print(f"✓ Top models guardados en bridge: {len(top_models)} modelos")
+            print(f"Top models guardados en bridge: {len(top_models)} modelos")
             return True
             
         except Exception as e:
@@ -57,10 +57,10 @@ class ParametrosBridge:
             
             top_models = bridge_data.get('top_models', [])
             if len(top_models) >= 3:
-                print(f"✓ Top models cargados desde bridge: {len(top_models)} modelos")
+                print(f"Top models cargados desde bridge: {len(top_models)} modelos")
                 return top_models
             else:
-                print(f"⚠ Insuficientes modelos en bridge: {len(top_models)}")
+                print(f"Insuficientes modelos en bridge: {len(top_models)}")
                 return None
                 
         except Exception as e:
@@ -72,7 +72,7 @@ class ParametrosBridge:
         try:
             if os.path.exists(self.bridge_file):
                 os.remove(self.bridge_file)
-                print("✓ Bridge file limpiado")
+                print("Bridge file limpiado")
         except Exception as e:
             print(f"Error limpiando bridge: {e}")
 
@@ -84,7 +84,7 @@ def update_selector_presets_from_top_models():
     top_models = bridge.load_top_models()
     
     if not top_models or len(top_models) < 3:
-        print("⚠ No hay suficientes modelos para actualizar presets")
+        print("No hay suficientes modelos para actualizar presets")
         return None
     
     # Mapear modelos a presets según tu especificación:
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     # Guardar modelos
     print("\n1. Guardando top models...")
     success = save_top_models_to_bridge(test_models)
-    print(f"   Resultado: {'✓ Éxito' if success else '✗ Error'}")
+    print(f"   Resultado: {'Éxito' if success else 'Error'}")
     
     # Obtener presets actualizados
     print("\n2. Obteniendo presets actualizados...")
@@ -211,9 +211,9 @@ if __name__ == "__main__":
             print(f"   - {preset_name}: {format_model_info(model)}")
             print(f"     {desc}")
     else:
-        print("   ✗ No se pudieron obtener presets")
+        print("   No se pudieron obtener presets")
     
     # Limpiar
     print("\n3. Limpiando bridge...")
     clear_bridge_data()
-    print("   ✓ Bridge limpiado")
+    print("   Bridge limpiado")

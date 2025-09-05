@@ -29,7 +29,7 @@ class UIComponents:
         header_frame.pack_propagate(False)
         
         header_label = tk.Label(header_frame, 
-                               text="📁 CARGAR ARCHIVO EXCEL",
+                               text="CARGAR ARCHIVO EXCEL",
                                font=('Segoe UI', 12, 'bold'),  # Reducido de 14 a 12
                                bg='#6366f1', fg='white')
         header_label.pack(pady=8)  # Reducido padding
@@ -67,7 +67,7 @@ class UIComponents:
         
         # Indicador de estado más pequeño
         status_button = tk.Button(buttons_frame,
-                                 text="⚪ EXCEL NO CARGADO",
+                                 text="EXCEL NO CARGADO",
                                  font=('Segoe UI', 9, 'bold'),  # Reducido de 10 a 9
                                  bg='#9ca3af', fg='white',
                                  relief='flat', padx=12, pady=6,  # Reducido padding
@@ -78,7 +78,7 @@ class UIComponents:
         def handle_excel_load():
             # Cambiar estado visual durante la carga
             load_button.config(state='disabled', text='CARGANDO...', bg='#9ca3af')
-            status_button.config(text='🔄 CARGANDO...', bg='#f59e0b')
+            status_button.config(text='CARGANDO...', bg='#f59e0b')
             parent.update_idletasks()
             
             # Intentar cargar el Excel
@@ -95,7 +95,7 @@ class UIComponents:
                 
                 # Actualizar estados de botones
                 load_button.config(text='CAMBIAR ARCHIVO', bg='#6b7280', state='normal')
-                status_button.config(text='🟢 EXCEL CARGADO', bg='#10b981')
+                status_button.config(text='EXCEL CARGADO', bg='#10b981')
                 
                 # Ejecutar callback si existe
                 if callback_after_load:
@@ -106,7 +106,7 @@ class UIComponents:
             else:
                 # Error al cargar
                 load_button.config(state='normal', text='SELECCIONAR ARCHIVO EXCEL', bg='#3b82f6')
-                status_button.config(text='❌ ERROR DE CARGA', bg='#dc2626')
+                status_button.config(text='ERROR DE CARGA', bg='#dc2626')
                 
         # Función para verificar estado inicial
         def check_initial_state():
@@ -121,7 +121,7 @@ class UIComponents:
                 file_info_label.config(fg='#059669')
                 
                 load_button.config(text='CAMBIAR ARCHIVO', bg='#6b7280')
-                status_button.config(text='🟢 EXCEL CARGADO', bg='#10b981')
+                status_button.config(text='EXCEL CARGADO', bg='#10b981')
                 
                 if callback_after_load:
                     callback_after_load()

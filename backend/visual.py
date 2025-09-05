@@ -113,7 +113,7 @@ def generar_grafica_validacion(file_path, order=(4, 0, 0), seasonal_order=(1, 0,
                 enforce_invertibility=False
             )
             results = model.fit(disp=False)
-            print("✓ Modelo ajustado exitosamente")
+            print("Modelo ajustado exitosamente")
         except Exception as e:
             print(f"ERROR: No se pudo ajustar el modelo: {e}")
             print("Los parámetros seleccionados pueden no ser compatibles con los datos.")
@@ -123,7 +123,7 @@ def generar_grafica_validacion(file_path, order=(4, 0, 0), seasonal_order=(1, 0,
         try:
             pred = results.get_forecast(steps=n_test)
             predicciones_validacion = pred.predicted_mean
-            print(f"✓ Predicciones de validación generadas para {len(predicciones_validacion)} períodos")
+            print(f"Predicciones de validación generadas para {len(predicciones_validacion)} períodos")
         except Exception as e:
             print(f"ERROR: No se pudieron generar predicciones: {e}")
             sys.exit(1)
