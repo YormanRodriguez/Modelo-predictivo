@@ -59,7 +59,7 @@ def check_cancellation(progress_file):
             # Verificar si existe el archivo de cancelación
             cancel_file = progress_file.replace('.json', '_cancel.json')
             if os.path.exists(cancel_file):
-                print("🚫 CANCELACIÓN DETECTADA - Deteniendo proceso...")
+                print(" CANCELACIÓN DETECTADA - Deteniendo proceso...")
                 PROCESO_CANCELADO = True
                 return True
         except Exception as e:
@@ -101,7 +101,7 @@ def update_progress(progress_file, progress, status, current_model=""):
     
     # VERIFICAR CANCELACIÓN ANTES DE ACTUALIZAR
     if check_cancellation(progress_file):
-        print("🚫 Proceso cancelado - interrumpiendo actualización de progreso")
+        print(" Proceso cancelado - interrumpiendo actualización de progreso")
         return False
     
     # Actualizar variables globales
@@ -140,10 +140,10 @@ def handle_graceful_shutdown(progress_file):
     global PROCESO_CANCELADO
     
     print("\n" + "="*60)
-    print("🚫 PROCESO CANCELADO POR EL USUARIO")
+    print(" PROCESO CANCELADO POR EL USUARIO")
     print("="*60)
-    print(f"⏹️  Iteraciones completadas antes de cancelar: {getattr(handle_graceful_shutdown, 'iteraciones', 0)}")
-    print(f"📊 Modelos evaluados: {len(TOP_3_MODELS)}")
+    print(f"  Iteraciones completadas antes de cancelar: {getattr(handle_graceful_shutdown, 'iteraciones', 0)}")
+    print(f" Modelos evaluados: {len(TOP_3_MODELS)}")
     
     if TOP_3_MODELS:
         print(f"🏆 Mejor modelo encontrado hasta ahora:")
@@ -154,13 +154,13 @@ def handle_graceful_shutdown(progress_file):
     # Actualizar progreso final
     if progress_file:
         update_progress(progress_file, PROGRESS_PERCENTAGE, 
-                       "❌ Proceso cancelado por el usuario", 
+                       " Proceso cancelado por el usuario", 
                        "Cancelado - limpiando recursos...")
     
     # Limpiar archivos de cancelación
     cleanup_cancellation_files(progress_file)
     
-    print("🔄 Recursos limpiados correctamente")
+    print(" Recursos limpiados correctamente")
     print("="*60)
     
     PROCESO_CANCELADO = True
@@ -169,7 +169,7 @@ def handle_graceful_shutdown(progress_file):
 def setup_signal_handlers(progress_file):
     """NUEVA FUNCIÓN: Configurar manejadores de señales para cancelación elegante"""
     def signal_handler(signum, frame):
-        print(f"\n⚠️  Señal {signum} recibida...")
+        print(f"\n  Señal {signum} recibida...")
         handle_graceful_shutdown(progress_file)
     
     # Configurar manejadores para diferentes señales
@@ -329,7 +329,7 @@ def finalizar_analisis_y_guardar_bridge():
     print("="*80)
     
     if len(TOP_3_MODELS) >= 3:
-        print(f"✓ Se encontraron {len(TOP_3_MODELS)} modelos para actualizar presets")
+        print(f" Se encontraron {len(TOP_3_MODELS)} modelos para actualizar presets")
         
         # Mostrar resumen de lo que se va a guardar
         mapping_info = [
@@ -352,16 +352,16 @@ def finalizar_analisis_y_guardar_bridge():
             try:
                 success = save_top_models_to_bridge(TOP_3_MODELS)
                 if success:
-                    print("\n✓ TOP MODELS GUARDADOS EN BRIDGE CORRECTAMENTE")
+                    print("\n TOP MODELS GUARDADOS EN BRIDGE CORRECTAMENTE")
                     print("  Los presets del selector de parámetros se actualizarán automáticamente")
                 else:
-                    print("\n⚠ Error guardando en bridge - los presets no se actualizarán")
+                    print("\n Error guardando en bridge - los presets no se actualizarán")
             except Exception as e:
-                print(f"\n✗ Error guardando en bridge: {e}")
+                print(f"\n Error guardando en bridge: {e}")
         else:
-            print("\n⚠ Bridge no disponible - los presets no se actualizarán automáticamente")
+            print("\n Bridge no disponible - los presets no se actualizarán automáticamente")
     else:
-        print(f"⚠ Insuficientes modelos para bridge: {len(TOP_3_MODELS)} (se necesitan 3)")
+        print(f"Insuficientes modelos para bridge: {len(TOP_3_MODELS)} (se necesitan 3)")
     
     print("="*80)
 
@@ -392,7 +392,7 @@ class AutoArimaWithMultipleMetrics:
         
         # VERIFICAR CANCELACIÓN AL INICIO DE CADA ITERACIÓN
         if check_cancellation(self.progress_file):
-            print(f"🚫 Cancelación detectada en iteración {self.iteracion + 1}")
+            print(f"Cancelación detectada en iteración {self.iteracion + 1}")
             handle_graceful_shutdown.iteraciones = self.iteracion  # Guardar contador
             handle_graceful_shutdown(self.progress_file)
             
@@ -406,7 +406,7 @@ class AutoArimaWithMultipleMetrics:
             
             # Verificar cancelación durante actualización de progreso
             if not update_progress(self.progress_file, progress_percentage, status, model_info):
-                print(f"🚫 Cancelación durante actualización de progreso - iteración {self.iteracion}")
+                print(f"Cancelación durante actualización de progreso - iteración {self.iteracion}")
                 handle_graceful_shutdown.iteraciones = self.iteracion
                 handle_graceful_shutdown(self.progress_file)
         
@@ -449,7 +449,7 @@ class AutoArimaWithMultipleMetrics:
             
         except InterruptedError:
             # Manejar cancelación elegante
-            print(f"🚫 Proceso interrumpido en iteración {self.iteracion}")
+            print(f"Proceso interrumpido en iteración {self.iteracion}")
             handle_graceful_shutdown.iteraciones = self.iteracion
             handle_graceful_shutdown(self.progress_file)
         except Exception as e:
@@ -457,7 +457,7 @@ class AutoArimaWithMultipleMetrics:
                 handle_graceful_shutdown.iteraciones = self.iteracion
                 handle_graceful_shutdown(self.progress_file)
             else:
-                print(f"⚠️  Error en iteración {self.iteracion}: {e}")
+                print(f"Error en iteración {self.iteracion}: {e}")
                 return float('inf')
     
     def get_resumen_final(self):
@@ -467,7 +467,7 @@ class AutoArimaWithMultipleMetrics:
         print("="*80)
         
         for i, modelo in enumerate(TOP_3_MODELS, 1):
-            medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉"
+            medal = "N1" if i == 1 else "N2" if i == 2 else "N3"
             print(f"\n{medal} PUESTO #{i}:")
             print(f"   Parámetros: order={modelo['order']}, seasonal_order={modelo['seasonal_order']}")
             print(f"   Precisión: {modelo['precision_final']:.1f}% | RMSE: {modelo['rmse']:.4f}")
@@ -609,7 +609,7 @@ def analizar_saidi(file_path, progress_file=None):
                     for s in s_range:
                         # VERIFICACIÓN CRÍTICA: Cancelación en cada iteración del bucle
                         if check_cancellation(progress_file):
-                            print("🚫 Cancelación detectada en bucle principal")
+                            print("Cancelación detectada en bucle principal")
                             handle_graceful_shutdown(progress_file)
                         
                         order = (p, d, q)
@@ -640,10 +640,10 @@ def analizar_saidi(file_path, progress_file=None):
                             continue
         
         except KeyboardInterrupt:
-            print("🚫 Interrupción por teclado (Ctrl+C)")
+            print("Interrupción por teclado (Ctrl+C)")
             handle_graceful_shutdown(progress_file)
         except InterruptedError:
-            print("🚫 Proceso interrumpido")
+            print("Proceso interrumpido")
             handle_graceful_shutdown(progress_file)
         
         # Verificar cancelación antes de finalizar
@@ -737,10 +737,10 @@ def analizar_saidi(file_path, progress_file=None):
                           f"Finalizado - {len(TOP_3_MODELS)} modelos evaluados")
 
     except KeyboardInterrupt:
-        print("🚫 Proceso cancelado por el usuario (Ctrl+C)")
+        print("Proceso cancelado por el usuario (Ctrl+C)")
         handle_graceful_shutdown(progress_file)
     except InterruptedError:
-        print("🚫 Proceso interrumpido por cancelación")
+        print("Proceso interrumpido por cancelación")
         handle_graceful_shutdown(progress_file)
     except Exception as e:
         # Verificar si la excepción fue debido a cancelación
@@ -785,31 +785,31 @@ def main():
             try:
                 analizar_saidi(file_path, args.progress)
                 if not PROCESO_CANCELADO:
-                    print("✅ Análisis completado exitosamente.")
+                    print("Análisis completado exitosamente.")
                     # Limpiar archivos de cancelación al completar exitosamente
                     cleanup_cancellation_files(args.progress)
                 else:
-                    print("🚫 Análisis cancelado por el usuario.")
+                    print("Análisis cancelado por el usuario.")
                     sys.exit(130)  # Código de cancelación
             except KeyboardInterrupt:
-                print("🚫 Proceso interrumpido por el usuario")
+                print("Proceso interrumpido por el usuario")
                 handle_graceful_shutdown(args.progress)
             except InterruptedError:
-                print("🚫 Proceso cancelado")
+                print("Proceso cancelado")
                 handle_graceful_shutdown(args.progress)
             except Exception as e:
                 if PROCESO_CANCELADO:
-                    print("🚫 Proceso cancelado durante ejecución")
+                    print("Proceso cancelado durante ejecución")
                     handle_graceful_shutdown(args.progress)
                 else:
-                    print(f"❌ Error durante el análisis: {e}")
+                    print(f"Error durante el análisis: {e}")
                     sys.exit(1)
         else:
-            print("❌ No se seleccionó ningún archivo.")
+            print("No se seleccionó ningún archivo.")
             sys.exit(1)
             
     except KeyboardInterrupt:
-        print("🚫 Programa interrumpido")
+        print("Programa interrumpido")
         sys.exit(130)
 
 if __name__ == "__main__":
