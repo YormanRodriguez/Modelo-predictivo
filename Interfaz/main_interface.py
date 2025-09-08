@@ -23,10 +23,10 @@ try:
         is_frozen
     )
     PATH_UTILS_AVAILABLE = True
-    print("Sistema de rutas PyInstaller cargado correctamente")
+    print("✓ Sistema de rutas PyInstaller cargado correctamente")
 except ImportError as e:
     PATH_UTILS_AVAILABLE = False
-    print(f"Sistema de rutas no disponible: {e}")
+    print(f"⚠ Sistema de rutas no disponible: {e}")
     print("  Funcionando en modo compatibilidad (solo desarrollo)")
 
 # Importar módulos locales
