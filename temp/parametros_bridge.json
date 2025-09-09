@@ -1,0 +1,63 @@
+{
+  "timestamp": "2025-09-09T15:21:18.865158",
+  "top_models": [
+    {
+      "order": [
+        0,
+        0,
+        1
+      ],
+      "seasonal_order": [
+        1,
+        0,
+        1,
+        12
+      ],
+      "precision_final": 54.82528467209554,
+      "rmse": 2.6687808342117307,
+      "mape": 7.368071694796539,
+      "r2_score": -0.1930969162890468,
+      "aic": 177.8920819131363
+    },
+    {
+      "order": [
+        1,
+        0,
+        0
+      ],
+      "seasonal_order": [
+        1,
+        0,
+        0,
+        12
+      ],
+      "precision_final": 53.151561769857366,
+      "rmse": 2.8152818621529216,
+      "mape": 11.246687790064277,
+      "r2_score": -0.32768077816889174,
+      "aic": 95.6073660102317
+    },
+    {
+      "order": [
+        1,
+        0,
+        1
+      ],
+      "seasonal_order": [
+        1,
+        0,
+        1,
+        12
+      ],
+      "precision_final": 53.09630216377522,
+      "rmse": 2.8490695352320485,
+      "mape": 11.314334958740085,
+      "r2_score": -0.35974039844499717,
+      "aic": 86.67611405557513
+    }
+  ],
+  "status": "updated",
+  "source": "Parametro.py",
+  "execution_mode": "Desarrollo",
+  "path_utils_available": false
+}

@@ -1,4 +1,4 @@
-# ParametroV.py 
+# ParametroV.py -
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
@@ -33,7 +33,7 @@ PROGRESS_DATA = {
 }
 
 class ProgressWindow:
-    """Ventana modal de progreso con visualización de top 3 modelos y bridge integration"""
+    """Ventana modal de progreso con resultados integrados en la misma interfaz"""
     
     def __init__(self, parent, title="Optimización de Parámetros", progress_file=None):
         self.parent = parent
@@ -56,6 +56,12 @@ class ProgressWindow:
         # NUEVA VARIABLE: Archivo de cancelación específico
         self.cancel_file = self.progress_file.replace('.json', '_cancel.json')
         
+        # Referencias para contenedores dinámicos
+        self.main_container = None
+        self.progress_section = None
+        self.info_section = None
+        self.results_section = None
+        
         self.window = tk.Toplevel(parent)
         self.setup_window(title)
         self.create_interface()
@@ -73,19 +79,19 @@ class ProgressWindow:
             print(f"Error limpiando archivos previos: {e}")
         
     def setup_window(self, title):
-        """Configurar la ventana modal con tamaño optimizado"""
+        """Configurar la ventana modal con tamaño optimizado y redimensionable"""
         self.window.title(title)
-        self.window.geometry("570x650")
+        self.window.geometry("620x700")  # Ligeramente más grande para resultados
         self.window.resizable(True, True)
-        self.window.minsize(570, 650)
+        self.window.minsize(620, 700)
         self.window.transient(self.parent)
         self.window.grab_set()
         
         # Centrar ventana
         self.window.update_idletasks()
-        x = (self.window.winfo_screenwidth() // 2) - (285)
-        y = (self.window.winfo_screenheight() // 2) - (325)
-        self.window.geometry(f"570x650+{x}+{y}")
+        x = (self.window.winfo_screenwidth() // 2) - (310)
+        y = (self.window.winfo_screenheight() // 2) - (350)
+        self.window.geometry(f"620x700+{x}+{y}")
 
         # Configurar fondo
         self.window.configure(bg='#f8fafc')
@@ -165,18 +171,8 @@ class ProgressWindow:
             self.update_cancellation_ui()
             
             if cancel_success:
-                # Mostrar mensaje de éxito
-                messagebox.showinfo("Proceso Cancelado", 
-                                   "Solicitud de cancelación enviada correctamente.\n\n"
-                                   "Las iteraciones se detendrán en los próximos momentos.\n"
-                                   "Puede cerrar esta ventana cuando lo desee.")
                 print("✓ Cancelación procesada exitosamente")
             else:
-                # Mostrar advertencia pero permitir continuar
-                messagebox.showwarning("Cancelación con Limitaciones",
-                                     "No se pudo crear el archivo de cancelación automática.\n\n"
-                                     "Sin embargo, el proceso ha sido marcado como cancelado localmente.\n"
-                                     "Si el proceso continúa, puede cerrar la aplicación principal para detenerlo.")
                 print("⚠ Cancelación procesada con limitaciones")
 
     def update_cancellation_ui(self):
@@ -186,7 +182,7 @@ class ProgressWindow:
             self.percentage_var.set("CANCELADO")
             self.iteration_var.set("Proceso cancelado por el usuario")
             self.current_model_var.set("Deteniendo iteraciones y limpiando recursos...")
-            self.activity_var.set("Advertencia")
+            self.activity_var.set("⚠")
             
             # Actualizar botones
             self.cancel_btn.configure(
@@ -216,40 +212,38 @@ class ProgressWindow:
             
         except Exception as e:
             print(f"Error actualizando interfaz de cancelación: {e}")
-
-    # [Resto de métodos permanecen igual - solo agrego el método create_interface y otros necesarios para completitud]
     
     def create_interface(self):
-        """Crear la interfaz de progreso"""
-        # Header con gradiente simulado
-        header_frame = tk.Frame(self.window, bg='#f59e0b', height=60)
-        header_frame.pack(fill='x')
-        header_frame.pack_propagate(False)
+        """Crear la interfaz de progreso inicial"""
+        # Header con gradiente simulado - DINÁMICO
+        self.header_frame = tk.Frame(self.window, bg='#f59e0b', height=60)
+        self.header_frame.pack(fill='x')
+        self.header_frame.pack_propagate(False)
         
-        title_label = tk.Label(header_frame, 
+        self.title_label = tk.Label(self.header_frame, 
                               text="Optimización de Parámetros ARIMA",
                               font=('Segoe UI', 16, 'bold'),
                               bg='#f59e0b', fg='white')
-        title_label.pack(pady=(10, 5))
+        self.title_label.pack(pady=(10, 5))
         
-        # Frame principal contenedor
-        main_container = tk.Frame(self.window, bg='#f8fafc')
-        main_container.pack(fill='both', expand=True, padx=20, pady=15)
+        # Frame principal contenedor - GUARDAR REFERENCIA
+        self.main_container = tk.Frame(self.window, bg='#f8fafc')
+        self.main_container.pack(fill='both', expand=True, padx=20, pady=15)
         
-        # Sección de progreso
-        progress_section = self.create_progress_section(main_container)
-        progress_section.pack(fill='x', pady=(0, 15))
+        # Sección de progreso - GUARDAR REFERENCIA
+        self.progress_section = self.create_progress_section(self.main_container)
+        self.progress_section.pack(fill='x', pady=(0, 15))
         
-        # Sección de información
-        info_section = self.create_info_section(main_container)
-        info_section.pack(fill='x', pady=(0, 15))
+        # Sección de información - GUARDAR REFERENCIA
+        self.info_section = self.create_info_section(self.main_container)
+        self.info_section.pack(fill='x', pady=(0, 15))
         
         # Botones
-        buttons_container = tk.Frame(main_container, bg='#f8fafc', height=50)
-        buttons_container.pack(fill='x', side='bottom', pady=(15, 0))
-        buttons_container.pack_propagate(False)
+        self.buttons_container = tk.Frame(self.main_container, bg='#f8fafc', height=50)
+        self.buttons_container.pack(fill='x', side='bottom', pady=(15, 0))
+        self.buttons_container.pack_propagate(False)
         
-        self.create_fixed_buttons(buttons_container)
+        self.create_fixed_buttons(self.buttons_container)
         
     def create_progress_section(self, parent):
         """Crear la sección de progreso"""
@@ -328,6 +322,144 @@ class ProgressWindow:
                 justify='left').pack(padx=15, pady=(0, 10))
         
         return info_frame
+
+    def create_results_section(self, parent, top_models):
+        """NUEVA FUNCIÓN: Crear sección de resultados integrada"""
+        # Crear frame principal para resultados con el mismo estilo
+        results_frame = tk.Frame(parent, bg='#ecfdf5', relief='solid', bd=1)
+        
+        # Header de resultados
+        header_frame = tk.Frame(results_frame, bg='#10b981', height=50)
+        header_frame.pack(fill='x')
+        header_frame.pack_propagate(False)
+        
+        tk.Label(header_frame,
+                text="🎉 RESULTADOS DE LA OPTIMIZACIÓN",
+                font=('Segoe UI', 14, 'bold'),
+                bg='#10b981', fg='white').pack(pady=12)
+        
+        # Contenido scrollable para los resultados
+        canvas = tk.Canvas(results_frame, bg='#ecfdf5', height=300)
+        scrollbar = ttk.Scrollbar(results_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='#ecfdf5')
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Mostrar top modelos
+        if len(top_models) >= 3:
+            medals = ["🥇", "🥈", "🥉"]
+            medal_colors = ["#ffd700", "#c0c0c0", "#cd7f32"]
+            
+            for i, (medal, color, model) in enumerate(zip(medals, medal_colors, top_models[:3])):
+                self.create_model_card(scrollable_frame, i+1, medal, model, color)
+        
+        elif len(top_models) > 0:
+            # Menos de 3 modelos pero al menos 1
+            for i, model in enumerate(top_models):
+                medal = f"#{i+1}"
+                color = "#10b981"
+                self.create_model_card(scrollable_frame, i+1, medal, model, color)
+        
+        # Información adicional
+        info_frame = tk.Frame(scrollable_frame, bg='#dbeafe', relief='solid', bd=1)
+        info_frame.pack(fill='x', padx=15, pady=10)
+        
+        tk.Label(info_frame,
+                text="✅ Bridge de Parámetros Actualizado",
+                font=('Segoe UI', 10, 'bold'),
+                bg='#dbeafe', fg='#1e40af').pack(pady=5)
+        
+        tk.Label(info_frame,
+                text="Los presets del selector de parámetros han sido actualizados automáticamente\ncon estos modelos optimizados.",
+                font=('Segoe UI', 9),
+                bg='#dbeafe', fg='#1e40af',
+                justify='center').pack(pady=(0, 5))
+        
+        # Configurar canvas y scrollbar
+        canvas.pack(side="left", fill="both", expand=True, padx=15, pady=15)
+        scrollbar.pack(side="right", fill="y")
+        
+        return results_frame
+
+    def create_model_card(self, parent, rank, medal, model, color):
+        """Crear una tarjeta individual para cada modelo"""
+        card_frame = tk.Frame(parent, bg='white', relief='solid', bd=2)
+        card_frame.pack(fill='x', padx=10, pady=5)
+        
+        # Header de la tarjeta
+        header = tk.Frame(card_frame, bg=color, height=35)
+        header.pack(fill='x')
+        header.pack_propagate(False)
+        
+        tk.Label(header,
+                text=f"{medal} MODELO #{rank}",
+                font=('Segoe UI', 11, 'bold'),
+                bg=color, fg='white').pack(pady=6)
+        
+        # Contenido de la tarjeta
+        content = tk.Frame(card_frame, bg='white')
+        content.pack(fill='x', padx=15, pady=10)
+        
+        # Información del modelo en grid
+        precision = model.get('precision_final', 0)
+        order = model.get('order', 'N/A')
+        seasonal_order = model.get('seasonal_order', 'N/A') 
+        rmse = model.get('rmse', 0)
+        mape = model.get('mape', 0)
+        r2_score = model.get('r2_score', 0)
+        
+        # Fila 1: Precisión destacada
+        precision_frame = tk.Frame(content, bg='#f0fdf4', relief='solid', bd=1)
+        precision_frame.pack(fill='x', pady=(0, 5))
+        
+        tk.Label(precision_frame,
+                text=f"PRECISIÓN: {precision:.1f}%",
+                font=('Segoe UI', 12, 'bold'),
+                bg='#f0fdf4', fg='#15803d').pack(pady=5)
+        
+        # Fila 2: Parámetros
+        params_frame = tk.Frame(content, bg='white')
+        params_frame.pack(fill='x', pady=2)
+        
+        tk.Label(params_frame,
+                text="Parámetros ARIMA:",
+                font=('Segoe UI', 9, 'bold'),
+                bg='white', fg='#374151').pack(side='left')
+        
+        tk.Label(params_frame,
+                text=f"order={order}",
+                font=('Segoe UI', 9),
+                bg='white', fg='#6b7280').pack(side='right')
+        
+        # Fila 3: Parámetros estacionales
+        seasonal_frame = tk.Frame(content, bg='white')
+        seasonal_frame.pack(fill='x', pady=2)
+        
+        tk.Label(seasonal_frame,
+                text="Estacionales:",
+                font=('Segoe UI', 9, 'bold'),
+                bg='white', fg='#374151').pack(side='left')
+                
+        tk.Label(seasonal_frame,
+                text=f"seasonal_order={seasonal_order}",
+                font=('Segoe UI', 9),
+                bg='white', fg='#6b7280').pack(side='right')
+        
+        # Fila 4: Métricas adicionales
+        metrics_frame = tk.Frame(content, bg='#fafafa', relief='solid', bd=1)
+        metrics_frame.pack(fill='x', pady=(5, 0))
+        
+        metrics_text = f"RMSE: {rmse:.4f} | MAPE: {mape:.1f}% | R²: {r2_score:.3f}"
+        tk.Label(metrics_frame,
+                text=metrics_text,
+                font=('Segoe UI', 8),
+                bg='#fafafa', fg='#6b7280').pack(pady=3)
         
     def create_fixed_buttons(self, parent):
         """Crear sección de botones fija"""
@@ -397,6 +529,149 @@ class ProgressWindow:
             
         except Exception as e:
             print(f"Error actualizando progreso: {e}")
+
+    # ====== MÉTODOS MODIFICADOS PARA INTEGRAR RESULTADOS ======
+    
+    def check_and_show_results(self):
+        """Verificar si hay resultados y mostrarlos EN LA MISMA INTERFAZ"""
+        try:
+            # Importar datos globales
+            global PROGRESS_DATA
+            
+            if PROGRESS_DATA.get('top_models') and len(PROGRESS_DATA['top_models']) > 0:
+                print(f"check_and_show_results: Encontrados {len(PROGRESS_DATA['top_models'])} modelos")
+                self.show_results(PROGRESS_DATA['top_models'])
+            else:
+                print("check_and_show_results: No hay modelos disponibles para mostrar")
+                # Mostrar mensaje de finalización sin resultados
+                self.show_completion_message()
+                
+        except Exception as e:
+            print(f"Error en check_and_show_results: {e}")
+            self.show_completion_message()
+
+    def show_results(self, top_models):
+        """MÉTODO MODIFICADO: Transformar la interfaz para mostrar resultados"""
+        try:
+            if self.results_shown:
+                return
+                
+            self.results_shown = True
+            self.animation_running = False
+            
+            print(f"show_results: Transformando interfaz para mostrar {len(top_models)} modelos")
+            
+            # PASO 1: Actualizar header
+            self.title_label.config(text="✅ Optimización Completada Exitosamente",
+                                   bg='#10b981')
+            self.header_frame.config(bg='#10b981')
+            
+            # PASO 2: Ocultar sección de progreso
+            self.progress_section.pack_forget()
+            
+            # PASO 3: Ocultar sección de información
+            self.info_section.pack_forget()
+            
+            # PASO 4: Crear y mostrar sección de resultados
+            self.results_section = self.create_results_section(self.main_container, top_models)
+            self.results_section.pack(fill='both', expand=True, pady=(0, 15))
+            
+            # PASO 5: Actualizar botones
+            self.cancel_btn.configure(
+                state='disabled',
+                bg='#9ca3af',
+                text="COMPLETADO"
+            )
+            
+            self.close_btn.configure(
+                state='normal',
+                bg='#10b981',
+                text="CERRAR RESULTADOS"
+            )
+            
+            # PASO 6: Actualizar bridge
+            self.update_bridge_with_results(top_models)
+            
+            # PASO 7: Redimensionar ventana si es necesario
+            self.window.geometry("650x750")  # Más alto para mostrar resultados
+            
+            print("✅ Interfaz transformada exitosamente para mostrar resultados")
+            
+        except Exception as e:
+            print(f"Error en show_results: {e}")
+            self.show_completion_message()
+
+    def show_completion_message(self):
+        """Mostrar mensaje de finalización simple transformando la interfaz"""
+        try:
+            self.results_shown = True
+            self.animation_running = False
+            
+            # Actualizar header
+            self.title_label.config(text="✅ Proceso Completado",
+                                   bg='#6b7280')
+            self.header_frame.config(bg='#6b7280')
+            
+            # Ocultar progreso e info
+            self.progress_section.pack_forget()
+            self.info_section.pack_forget()
+            
+            # Crear mensaje simple
+            completion_frame = tk.Frame(self.main_container, bg='#f3f4f6', relief='solid', bd=1)
+            completion_frame.pack(fill='both', expand=True, pady=(0, 15))
+            
+            tk.Label(completion_frame,
+                    text="Proceso de optimización completado",
+                    font=('Segoe UI', 14, 'bold'),
+                    bg='#f3f4f6', fg='#374151').pack(pady=50)
+            
+            tk.Label(completion_frame,
+                    text="No se encontraron suficientes modelos para mostrar resultados detallados.",
+                    font=('Segoe UI', 10),
+                    bg='#f3f4f6', fg='#6b7280').pack(pady=10)
+            
+            # Actualizar botones
+            self.cancel_btn.configure(
+                state='disabled',
+                bg='#9ca3af',
+                text="COMPLETADO"
+            )
+            
+            self.close_btn.configure(
+                state='normal',
+                bg='#6b7280',
+                text="CERRAR"
+            )
+            
+        except Exception as e:
+            print(f"Error en show_completion_message: {e}")
+
+    def update_bridge_with_results(self, top_models):
+        """Actualizar bridge de parámetros con los resultados"""
+        try:
+            # Verificar si el bridge está disponible
+            global BRIDGE_AVAILABLE
+            
+            if BRIDGE_AVAILABLE and len(top_models) >= 3:
+                print("Actualizando bridge de parámetros...")
+                
+                # Importar bridge functions
+                try:
+                    from backend.parametros_bridge import save_top_models_to_bridge
+                    success = save_top_models_to_bridge(top_models)
+                    
+                    if success:
+                        print("✓ Bridge actualizado correctamente")
+                    else:
+                        print("⚠ Error actualizando bridge")
+                        
+                except Exception as bridge_error:
+                    print(f"Error importando/ejecutando bridge: {bridge_error}")
+            else:
+                print(f"Bridge no disponible o insuficientes modelos: {len(top_models)}")
+                
+        except Exception as e:
+            print(f"Error en update_bridge_with_results: {e}")
 
     def on_window_close(self):
         """Manejar cierre de ventana con X"""

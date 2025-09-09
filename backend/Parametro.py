@@ -622,8 +622,8 @@ def analizar_saidi(file_path, progress_file=None):
         P_range = range(0, 2)   
         D_range = range(0, 1)   
         Q_range = range(0, 2)   
-        #s_range = range(11, 12)
-        s_range = [12]  # Fijar a 12 para datos mensuales
+       
+        s_range = [12]  
         
         mejor_modelo_global = None
         total_combinations = len(p_range) * len(d_range) * len(q_range) * len(P_range) * len(D_range) * len(Q_range) * len(s_range)
