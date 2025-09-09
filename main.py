@@ -269,17 +269,17 @@ class SAIDILauncher:
         for module_name, description in critical_modules:
             try:
                 __import__(module_name)
-                self.logger.debug(f"✓ {module_name}: Disponible")
+                self.logger.debug(f"k {module_name}: Disponible")
             except ImportError as e:
                 missing_modules.append((module_name, description, str(e)))
-                self.logger.error(f"✗ {module_name}: FALTANTE ({e})")
+                self.logger.error(f" {module_name}: FALTANTE ({e})")
 
         if missing_modules:
             if self.is_frozen:
                 # En executable, es error crítico
                 error_msg = (f"Executable incompleto - Dependencias faltantes:\n\n")
                 for module, desc, error in missing_modules:
-                    error_msg += f"• {module}: {desc}\n  Error: {error}\n\n"
+                    error_msg += f" {module}: {desc}\n  Error: {error}\n\n"
                 error_msg += "El executable debe recompilarse incluyendo todas las dependencias."
                 
                 self.logger.error(error_msg)
@@ -434,11 +434,11 @@ class SAIDILauncher:
             self.logger.info("="*50)
             
             # Mostrar información en consola también
-            print(f"\n🚀 SAIDI Analysis Pro iniciado correctamente")
-            print(f"📁 Modo: {self.mode}")
+            print(f"\nSAIDI Analysis Pro iniciado correctamente")
+            print(f"Modo: {self.mode}")
             if self.is_frozen:
-                print(f"📍 Ejecutable: {sys.executable}")
-                print(f"💾 Logs: {self.executable_dir}")
+                print(f"Ejecutable: {sys.executable}")
+                print(f"Logs: {self.executable_dir}")
             
             # Iniciar loop principal de tkinter
             root.mainloop()
@@ -492,28 +492,28 @@ class SAIDILauncher:
         # Paso 1: Verificar estructura
         if not self.verify_project_structure():
             self.logger.error("Verificación de estructura falló")
-            print("❌ Verificación de estructura falló. Abortando.")
+            print("Verificación de estructura falló. Abortando.")
             self._wait_for_input()
             return False
             
-        print("✅ Estructura del proyecto verificada")
+        print("Estructura del proyecto verificada")
         
         # Paso 2: Configurar paths
         self.setup_python_path()
-        print("✅ Paths de Python configurados")
+        print("Paths de Python configurados")
         
         # Paso 3: Verificar dependencias  
         if not self.verify_dependencies():
             self.logger.error("Verificación de dependencias falló")
-            print("❌ Verificación de dependencias falló. Abortando.")
+            print("Verificación de dependencias falló. Abortando.")
             self._wait_for_input()
             return False
             
-        print("✅ Dependencias verificadas")
+        print("Dependencias verificadas")
         
         print()
         print("=" * 60)
-        print("🎯 TODAS LAS VERIFICACIONES COMPLETADAS EXITOSAMENTE")
+        print("TODAS LAS VERIFICACIONES COMPLETADAS EXITOSAMENTE")
         print("=" * 60)
         print()
         
@@ -550,18 +550,18 @@ def main():
         success = launcher.run()
         
         if success:
-            print("\n🎉 SAIDI Analysis Pro se ejecutó correctamente")
+            print("\nSAIDI Analysis Pro se ejecutó correctamente")
         else:
-            print("\n⚠️  SAIDI Analysis Pro terminó con errores")
+            print("\n SAIDI Analysis Pro terminó con errores")
             
     except KeyboardInterrupt:
-        print("\n⏹️  Ejecución interrumpida por el usuario")
+        print("\nEjecución interrumpida por el usuario")
         if launcher:
             launcher.logger.info("Ejecución interrumpida por el usuario")
         
     except Exception as e:
         error_msg = f"Error crítico en el launcher: {e}"
-        print(f"\n💥 {error_msg}")
+        print(f"\n {error_msg}")
         
         if launcher:
             launcher.logger.error(f"{error_msg}\nTRACEBACK: {traceback.format_exc()}")
@@ -574,7 +574,7 @@ def main():
             is_frozen = getattr(sys, 'frozen', False)
             if not is_frozen:  # Solo en desarrollo
                 try:
-                    input("\n⏸️  Presione Enter para salir...")
+                    input("\n Presione Enter para salir...")
                 except:
                     pass
 
