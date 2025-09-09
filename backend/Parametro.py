@@ -616,12 +616,12 @@ def analizar_saidi(file_path, progress_file=None):
         from itertools import product
         
         # Rangos de parámetros
-        p_range = range(0, 2)   
-        d_range = range(0, 1)  
-        q_range = range(0, 2)   
-        P_range = range(0, 2)   
-        D_range = range(0, 1)   
-        Q_range = range(0, 2)   
+        p_range = range(0, 6)   
+        d_range = range(0, 2)  
+        q_range = range(0, 6)   
+        P_range = range(0, 6)   
+        D_range = range(0, 2)   
+        Q_range = range(0, 6)   
        
         s_range = [12]  
         

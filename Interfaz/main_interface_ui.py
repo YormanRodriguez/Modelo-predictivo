@@ -1,7 +1,8 @@
-# main_interface_ui.py - Componentes de interfaz separados de la lógica
+# main_interface_ui.py 
 """
 Componentes de interfaz de usuario para la ventana principal
 Separado de la lógica de negocio para mejor organización
+ACTUALIZADO CON COLORES CORPORATIVOS: #9fcf67 (verde claro) y #0d9648 (verde oscuro)
 """
 import tkinter as tk
 from tkinter import ttk
@@ -78,28 +79,28 @@ class MainInterfaceUI:
         self.update_modules_state()
         
     def create_header(self, parent):
-        """Crear el header más compacto"""
-        # Frame principal del header más pequeño
-        header_frame = tk.Frame(parent, bg='#2563eb', height=50)
+        """Crear el header más compacto - COLORES CORPORATIVOS"""
+        # Frame principal del header más pequeño - COLOR CORPORATIVO PRIMARIO
+        header_frame = tk.Frame(parent, bg='#0d9648', height=50)
         header_frame.pack(fill='x', pady=(0, 10))
         header_frame.pack_propagate(False)
         
-        # Simular gradiente con un frame más pequeño
-        gradient_frame = tk.Frame(header_frame, bg='#1e40af', height=6)
+        # Simular gradiente con un frame más pequeño - COLOR CORPORATIVO SECUNDARIO
+        gradient_frame = tk.Frame(header_frame, bg='#9fcf67', height=6)
         gradient_frame.pack(fill='x', side='bottom')
         
         # Título principal más compacto
         title_label = tk.Label(header_frame, 
                               text="SAIDI Analysis",
                               font=('Segoe UI', 18, 'bold'),
-                              bg='#2563eb', fg='white')
+                              bg='#0d9648', fg='white')
         title_label.pack(pady=(8, 2))
         
         # Subtítulo más pequeño
         subtitle_label = tk.Label(header_frame,
                                  text="Sistema Integral de Análisis Predictivo SAIDI",
                                  font=('Segoe UI', 9),
-                                 bg='#2563eb', fg='#bfdbfe')
+                                 bg='#0d9648', fg='#e8f5e8')
         subtitle_label.pack()
         
     def create_footer(self, parent):
@@ -107,8 +108,8 @@ class MainInterfaceUI:
         footer_frame = tk.Frame(parent, bg='#f8fafc')
         footer_frame.pack(fill='x', side='bottom', pady=(5, 0))
         
-        # Línea separadora más delgada
-        separator = tk.Frame(footer_frame, bg='#d1d5db', height=1)
+        # Línea separadora más delgada - COLOR CORPORATIVO GRIS
+        separator = tk.Frame(footer_frame, bg='#a1a1a5', height=1)
         separator.pack(fill='x', pady=(0, 5))
         
         # Información del footer más compacta
@@ -129,11 +130,11 @@ class MainInterfaceUI:
         status_label.pack(pady=(0, 2))
 
     def create_excel_load_section(self, parent):
-        """Crear sección de carga de Excel"""
-        # Frame principal para la sección Excel
+        """Crear sección de carga de Excel - COLORES CORPORATIVOS"""
+        # Frame principal para la sección Excel - BORDE CORPORATIVO
         excel_frame = tk.LabelFrame(parent, text="Carga de Datos Excel", 
                                    font=('Segoe UI', 11, 'bold'),
-                                   bg='#f8fafc', fg='#1e40af',
+                                   bg='#f8fafc', fg='#0d9648',
                                    relief='ridge', bd=2)
         excel_frame.pack(fill='x', pady=(0, 15), padx=10)
         
@@ -145,12 +146,12 @@ class MainInterfaceUI:
         button_frame = tk.Frame(inner_frame, bg='#f8fafc')
         button_frame.pack(fill='x')
         
-        # Botón de selección de archivo
+        # Botón de selección de archivo - COLOR CORPORATIVO PRIMARIO
         self.excel_button = tk.Button(button_frame,
                                      text="SELECCIONAR ARCHIVO EXCEL",
                                      command=self.callbacks['select_excel_file'],
                                      font=('Segoe UI', 10, 'bold'),
-                                     bg='#059669', fg='white',
+                                     bg='#9fcf67', fg='white',
                                      relief='raised', bd=2,
                                      cursor='hand2',
                                      padx=20, pady=10)
@@ -176,8 +177,8 @@ class MainInterfaceUI:
                                           anchor='w')
         self.file_details_label.pack(fill='x')
         
-        # Agregar efectos hover al botón
-        self.add_button_hover_effects(self.excel_button, '#047857', '#059669')
+        # Agregar efectos hover al botón - COLORES CORPORATIVOS
+        self.add_button_hover_effects(self.excel_button, '#0d9648', '#9fcf67')
         
         # Guardar referencia de componentes
         self.excel_components = {
@@ -220,10 +221,10 @@ class MainInterfaceUI:
             except:
                 details_text = f"📋 Archivo válido • {file_size_mb:.1f} MB"
             
-            # Actualizar labels
+            # Actualizar labels - COLOR CORPORATIVO PARA ÉXITO
             self.file_info_label.config(
                 text=f" {file_name}",
-                fg='#059669'  # Verde para éxito
+                fg='#0d9648'  # Verde corporativo para éxito
             )
             
             self.file_details_label.config(
@@ -236,9 +237,9 @@ class MainInterfaceUI:
             
         except Exception as e:
             print(f"ERROR en update_excel_info_display: {e}")
-            # Fallback básico
+            # Fallback básico - COLOR CORPORATIVO
             file_name = os.path.basename(file_path)
-            self.file_info_label.config(text=f"{file_name}", fg='#059669')
+            self.file_info_label.config(text=f"{file_name}", fg='#0d9648')
             self.file_details_label.config(text="Archivo cargado correctamente", fg='#374151')
 
     def ensure_fullscreen(self):
@@ -295,10 +296,10 @@ class MainInterfaceUI:
         if module_key in self.module_buttons:
             button = self.module_buttons[module_key]
             if is_running:
-                # Cambiar apariencia cuando está ejecutándose
+                # Cambiar apariencia cuando está ejecutándose - COLOR CORPORATIVO TERCIARIO
                 button.config(
                     text="EJECUTANDO...",
-                    bg='#f59e0b',  # Color naranja para indicar ejecución
+                    bg='#a1a1a5',  # Color terciario para estado de ejecución
                     state='disabled',
                     cursor='wait'
                 )

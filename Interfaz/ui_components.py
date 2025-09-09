@@ -1,6 +1,7 @@
-# ui_components.py - VERSIÓN CORREGIDA
+# ui_components.py 
 """
 Componentes reutilizables de la interfaz de usuario - CORREGIDO
+ACTUALIZADO CON COLORES CORPORATIVOS: #9fcf67 (verde claro) y #0d9648 (verde oscuro)
 """
 import tkinter as tk
 from tkinter import ttk
@@ -13,7 +14,7 @@ class UIComponents:
     @staticmethod
     def create_excel_load_section(parent, callback_after_load=None):
         """
-        Crear la sección de carga de Excel con indicador de estado más compacta
+        Crear la sección de carga de Excel con indicador de estado más compacta - COLORES CORPORATIVOS
         Args:
             parent: Widget padre
             callback_after_load: Función a ejecutar después de cargar el Excel
@@ -23,15 +24,15 @@ class UIComponents:
         excel_frame = tk.Frame(parent, bg='#f8fafc', relief='solid', bd=1)
         excel_frame.pack(fill='x', padx=15, pady=8)  # Reducido padding
         
-        # Header de la sección más pequeño
-        header_frame = tk.Frame(excel_frame, bg='#6366f1', height=40)  # Reducido de 50 a 40
+        # Header de la sección más pequeño - COLOR CORPORATIVO SECUNDARIO
+        header_frame = tk.Frame(excel_frame, bg='#0d9648', height=40)  # Reducido de 50 a 40
         header_frame.pack(fill='x')
         header_frame.pack_propagate(False)
         
         header_label = tk.Label(header_frame, 
                                text="CARGAR ARCHIVO EXCEL",
                                font=('Segoe UI', 12, 'bold'),  # Reducido de 14 a 12
-                               bg='#6366f1', fg='white')
+                               bg='#0d9648', fg='white')
         header_label.pack(pady=8)  # Reducido padding
         
         # Contenido de la sección más compacto
@@ -56,29 +57,29 @@ class UIComponents:
         buttons_frame = tk.Frame(content_frame, bg='white')
         buttons_frame.pack(fill='x')
         
-        # Botón de cargar Excel más pequeño
+        # Botón de cargar Excel más pequeño - COLOR CORPORATIVO PRIMARIO
         load_button = tk.Button(buttons_frame, 
                                text="SELECCIONAR ARCHIVO EXCEL",
                                font=('Segoe UI', 10, 'bold'),  # Reducido de 11 a 10
-                               bg='#3b82f6', fg='white',
+                               bg='#9fcf67', fg='white',
                                relief='flat', padx=15, pady=6,  # Reducido padding
                                cursor='hand2')
         load_button.pack(side='left', padx=(0, 10))  # Reducido padding
         
-        # Indicador de estado más pequeño
+        # Indicador de estado más pequeño - COLOR CORPORATIVO GRIS
         status_button = tk.Button(buttons_frame,
                                  text="EXCEL NO CARGADO",
                                  font=('Segoe UI', 9, 'bold'),  # Reducido de 10 a 9
-                                 bg='#9ca3af', fg='white',
+                                 bg='#a1a1a5', fg='white',
                                  relief='flat', padx=12, pady=6,  # Reducido padding
                                  state='disabled')
         status_button.pack(side='left')
         
         # Función para manejar la carga de Excel
         def handle_excel_load():
-            # Cambiar estado visual durante la carga
-            load_button.config(state='disabled', text='CARGANDO...', bg='#9ca3af')
-            status_button.config(text='CARGANDO...', bg='#f59e0b')
+            # Cambiar estado visual durante la carga - COLORES CORPORATIVOS
+            load_button.config(state='disabled', text='CARGANDO...', bg='#a1a1a5')
+            status_button.config(text='CARGANDO...', bg='#a1a1a5')
             parent.update_idletasks()
             
             # Intentar cargar el Excel
@@ -87,15 +88,15 @@ class UIComponents:
                 excel_info = ExcelManager.get_excel_info()
                 file_name = excel_info['file_name']
                 
-                # Actualizar información del archivo
+                # Actualizar información del archivo - COLOR CORPORATIVO PARA ÉXITO
                 file_info_text = (f"✓ Archivo: {file_name}\n"
                                 f"✓ Dimensiones: {excel_info['rows']} filas x {excel_info['columns']} columnas")
                 file_info_var.set(file_info_text)
-                file_info_label.config(fg='#059669')
+                file_info_label.config(fg='#0d9648')
                 
-                # Actualizar estados de botones
-                load_button.config(text='CAMBIAR ARCHIVO', bg='#6b7280', state='normal')
-                status_button.config(text='EXCEL CARGADO', bg='#10b981')
+                # Actualizar estados de botones - COLORES CORPORATIVOS
+                load_button.config(text='CAMBIAR ARCHIVO', bg='#a1a1a5', state='normal')
+                status_button.config(text='EXCEL CARGADO', bg='#9fcf67')
                 
                 # Ejecutar callback si existe
                 if callback_after_load:
@@ -104,8 +105,8 @@ class UIComponents:
                 print(f"✓ Excel cargado: {file_name}")
                 
             else:
-                # Error al cargar
-                load_button.config(state='normal', text='SELECCIONAR ARCHIVO EXCEL', bg='#3b82f6')
+                # Error al cargar - COLOR ROJO ARMONIOSO
+                load_button.config(state='normal', text='SELECCIONAR ARCHIVO EXCEL', bg='#9fcf67')
                 status_button.config(text='ERROR DE CARGA', bg='#dc2626')
                 
         # Función para verificar estado inicial
@@ -118,10 +119,10 @@ class UIComponents:
                 file_info_text = (f"✓ Archivo: {file_name}\n"
                                 f"✓ Dimensiones: {excel_info['rows']} filas x {excel_info['columns']} columnas")
                 file_info_var.set(file_info_text)
-                file_info_label.config(fg='#059669')
+                file_info_label.config(fg='#0d9648')
                 
-                load_button.config(text='CAMBIAR ARCHIVO', bg='#6b7280')
-                status_button.config(text='EXCEL CARGADO', bg='#10b981')
+                load_button.config(text='CAMBIAR ARCHIVO', bg='#a1a1a5')
+                status_button.config(text='EXCEL CARGADO', bg='#9fcf67')
                 
                 if callback_after_load:
                     callback_after_load()
@@ -129,8 +130,8 @@ class UIComponents:
         # Configurar comando del botón
         load_button.config(command=handle_excel_load)
         
-        # Efectos hover
-        UIComponents.add_hover_effects(load_button, '#2563eb', None)  # Se determinará dinámicamente
+        # Efectos hover - COLORES CORPORATIVOS
+        UIComponents.add_hover_effects(load_button, '#0d9648', None)  # Se determinará dinámicamente
         
         # Verificar estado inicial
         check_initial_state()
@@ -146,7 +147,7 @@ class UIComponents:
     @staticmethod
     def create_analysis_modules(parent, module_callbacks: Dict[str, Callable]):
         """
-        Crear los módulos de análisis con cards uniformes y más compactas - CORREGIDO
+        Crear los módulos de análisis con cards uniformes y más compactas - COLORES CORPORATIVOS
         Args:
             parent: Widget padre
             module_callbacks: Dict con callbacks para cada módulo
@@ -162,14 +163,14 @@ class UIComponents:
         
         module_buttons = {}
         
-        # Configuraciones de módulos
+        # Configuraciones de módulos - COLORES CORPORATIVOS
         modules_config = [
             {
                 'key': 'prediction',
                 'icon': '📊',
                 'title': 'Predicción SAIDI',
                 'description': 'Genera predicciones para períodos faltantes utilizando modelos SARIMAX optimizados.',
-                'color': '#2563eb',
+                'color': '#9fcf67',  # Verde claro corporativo
                 'button_text': 'INICIAR PREDICCIÓN',
                 'callback': module_callbacks.get('prediction')
             },
@@ -178,7 +179,7 @@ class UIComponents:
                 'icon': '📈', 
                 'title': 'Comportamiento del Modelo',
                 'description': 'Visualiza la precisión del modelo mediante gráficas comparativas.',
-                'color': '#10b981',
+                'color': '#0d9648',  # Verde oscuro corporativo
                 'button_text': 'ANÁLISIS DE PRECISIÓN',
                 'callback': module_callbacks.get('behavior')
             },
@@ -187,7 +188,7 @@ class UIComponents:
                 'icon': '⚙️',
                 'title': 'Optimización de Parámetros', 
                 'description': 'Búsqueda exhaustiva de parámetros óptimos mediante algoritmos ARIMA.',
-                'color': '#f59e0b',
+                'color': '#7bb15a',  # Verde medio armonioso con la paleta
                 'button_text': 'OPTIMIZAR PARÁMETROS',
                 'callback': module_callbacks.get('optimization')
             }
@@ -208,7 +209,7 @@ class UIComponents:
     
     @staticmethod
     def _create_module_card(parent, row, col, config):
-        """Crear una card de módulo individual con tamaño uniforme y más compacta - CORREGIDO"""
+        """Crear una card de módulo individual con tamaño uniforme y más compacta - COLORES CORPORATIVOS"""
         # Frame principal de la card con altura fija para uniformidad
         card_frame = tk.Frame(parent, bg='white', relief='solid', bd=1, 
                              height=280, width=300)  # Altura fija reducida de ~350 a 280
@@ -216,7 +217,7 @@ class UIComponents:
         card_frame.grid_propagate(False)  # IMPORTANTE: Evita que se redimensione
         card_frame.pack_propagate(False)  # IMPORTANTE: Mantiene tamaño fijo
         
-        # Header con ícono más compacto
+        # Header con ícono más compacto - COLOR CORPORATIVO
         header_frame = tk.Frame(card_frame, bg=config['color'], height=45)  # Reducido de 60 a 45
         header_frame.pack(fill='x', pady=(0, 8))  # Reducido padding
         header_frame.pack_propagate(False)
@@ -250,7 +251,7 @@ class UIComponents:
         # CORRECCIÓN CRÍTICA: Determinar estado inicial basado en Excel
         excel_loaded = ExcelManager.is_excel_loaded()
         initial_state = 'normal' if excel_loaded else 'disabled'
-        initial_bg = config['color'] if excel_loaded else '#9ca3af'
+        initial_bg = config['color'] if excel_loaded else '#a1a1a5'  # Color corporativo gris para deshabilitado
         
         # Botón más compacto - CORREGIDO con estado inicial apropiado
         button = tk.Button(content_frame, text=config['button_text'],
@@ -266,7 +267,7 @@ class UIComponents:
         button.original_command = config['callback']
         button.original_text = config['button_text']
         
-        # CORRECCIÓN: Configurar hover effects si está habilitado
+        # CORRECCIÓN: Configurar hover effects si está habilitado - COLORES CORPORATIVOS
         if excel_loaded:
             UIComponents.add_hover_effects(
                 button, 
@@ -301,7 +302,7 @@ class UIComponents:
                         command=button.original_command,
                         cursor='hand2'
                     )
-                    # Restaurar efectos hover
+                    # Restaurar efectos hover - COLORES CORPORATIVOS
                     UIComponents.add_hover_effects(
                         button, 
                         UIComponents.darken_color(button.original_color),
@@ -309,10 +310,10 @@ class UIComponents:
                     )
                     print(f"DEBUG: Botón {key} habilitado - color: {button.original_color}")
                 else:
-                    # Deshabilitar botón
+                    # Deshabilitar botón - COLOR CORPORATIVO GRIS
                     button.config(
                         state='disabled',
-                        bg='#9ca3af',
+                        bg='#a1a1a5',  # Color corporativo gris
                         command=None,
                         cursor='arrow'
                     )
@@ -352,12 +353,11 @@ class UIComponents:
     
     @staticmethod
     def darken_color(hex_color):
-        """Oscurecer un color hexadecimal para efectos hover"""
+        """Oscurecer un color hexadecimal para efectos hover - COLORES CORPORATIVOS"""
         color_map = {
-            '#2563eb': '#1d4ed8',
-            '#10b981': '#059669', 
-            '#f59e0b': '#d97706',
-            '#3b82f6': '#2563eb',
-            '#6b7280': '#4b5563'
+            '#9fcf67': '#0d9648',  # Verde claro -> verde oscuro corporativo
+            '#0d9648': '#0a7a3a',  # Verde oscuro -> más oscuro
+            '#7bb15a': '#5e8e45',  # Verde medio -> más oscuro
+            '#a1a1a5': '#8a8a8e'   # Gris -> más oscuro
         }
         return color_map.get(hex_color, hex_color)

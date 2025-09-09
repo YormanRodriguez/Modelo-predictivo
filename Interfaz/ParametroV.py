@@ -1,4 +1,4 @@
-# ParametroV.py -
+# ParametroV.py 
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
@@ -33,7 +33,7 @@ PROGRESS_DATA = {
 }
 
 class ProgressWindow:
-    """Ventana modal de progreso con resultados integrados en la misma interfaz"""
+    """Ventana modal de progreso con resultados integrados en la misma interfaz - COLORES CORPORATIVOS"""
     
     def __init__(self, parent, title="Optimización de Parámetros", progress_file=None):
         self.parent = parent
@@ -90,7 +90,7 @@ class ProgressWindow:
         # Centrar ventana
         self.window.update_idletasks()
         x = (self.window.winfo_screenwidth() // 2) - (310)
-        y = (self.window.winfo_screenheight() // 2) - (350)
+        y = max(30, (self.window.winfo_screenheight() // 2) - (350))
         self.window.geometry(f"620x700+{x}+{y}")
 
         # Configurar fondo
@@ -176,7 +176,7 @@ class ProgressWindow:
                 print("⚠ Cancelación procesada con limitaciones")
 
     def update_cancellation_ui(self):
-        """NUEVA FUNCIÓN: Actualizar interfaz para mostrar cancelación"""
+        """NUEVA FUNCIÓN: Actualizar interfaz para mostrar cancelación - COLORES CORPORATIVOS"""
         try:
             # Actualizar indicadores visuales
             self.percentage_var.set("CANCELADO")
@@ -184,16 +184,16 @@ class ProgressWindow:
             self.current_model_var.set("Deteniendo iteraciones y limpiando recursos...")
             self.activity_var.set("⚠")
             
-            # Actualizar botones
+            # Actualizar botones - COLORES CORPORATIVOS
             self.cancel_btn.configure(
                 state='disabled', 
-                bg='#9ca3af', 
+                bg='#a1a1a5',  # Color corporativo gris
                 text="CANCELADO"
             )
             
             self.close_btn.configure(
                 state='normal', 
-                bg='#ef4444',
+                bg='#dc2626',  # Rojo para cerrar cancelado
                 text="CERRAR (CANCELADO)"
             )
             
@@ -203,7 +203,7 @@ class ProgressWindow:
                 style = ttk.Style()
                 style.configure('Cancelled.Horizontal.TProgressbar',
                             troughcolor='#fee2e2',
-                            background='#ef4444',
+                            background='#dc2626',
                             borderwidth=0)
             except:
                 pass  # Continuar aunque falle el estilo
@@ -214,16 +214,16 @@ class ProgressWindow:
             print(f"Error actualizando interfaz de cancelación: {e}")
     
     def create_interface(self):
-        """Crear la interfaz de progreso inicial"""
-        # Header con gradiente simulado - DINÁMICO
-        self.header_frame = tk.Frame(self.window, bg='#f59e0b', height=60)
+        """Crear la interfaz de progreso inicial - COLORES CORPORATIVOS"""
+        # Header con gradiente simulado - DINÁMICO - COLORES CORPORATIVOS
+        self.header_frame = tk.Frame(self.window, bg='#9fcf67', height=60)  # Verde claro corporativo
         self.header_frame.pack(fill='x')
         self.header_frame.pack_propagate(False)
         
         self.title_label = tk.Label(self.header_frame, 
                               text="Optimización de Parámetros ARIMA",
                               font=('Segoe UI', 16, 'bold'),
-                              bg='#f59e0b', fg='white')
+                              bg='#9fcf67', fg='white')
         self.title_label.pack(pady=(10, 5))
         
         # Frame principal contenedor - GUARDAR REFERENCIA
@@ -246,21 +246,21 @@ class ProgressWindow:
         self.create_fixed_buttons(self.buttons_container)
         
     def create_progress_section(self, parent):
-        """Crear la sección de progreso"""
+        """Crear la sección de progreso - COLORES CORPORATIVOS"""
         section_frame = tk.Frame(parent, bg='white', relief='solid', bd=1)
         
-        # Título de sección
+        # Título de sección - COLOR CORPORATIVO
         tk.Label(section_frame, 
                 text="Progreso de Evaluación",
                 font=('Segoe UI', 12, 'bold'),
-                bg='white', fg='#1f2937').pack(pady=8)
+                bg='white', fg='#0d9648').pack(pady=8)  # Verde oscuro corporativo
         
-        # Porcentaje grande
+        # Porcentaje grande - COLOR CORPORATIVO
         self.percentage_var = tk.StringVar(value="0%")
         self.percentage_label = tk.Label(section_frame,
                                         textvariable=self.percentage_var,
                                         font=('Segoe UI', 36, 'bold'),
-                                        bg='white', fg='#2563eb')
+                                        bg='white', fg='#9fcf67')  # Verde claro corporativo
         self.percentage_label.pack(pady=8)
         
         # Barra de progreso
@@ -289,12 +289,12 @@ class ProgressWindow:
                             wraplength=500)
         model_label.pack(pady=3)
         
-        # Indicador visual de actividad
+        # Indicador visual de actividad - COLOR CORPORATIVO
         self.activity_var = tk.StringVar(value="●")
         self.activity_label = tk.Label(section_frame,
                                     textvariable=self.activity_var,
                                     font=('Segoe UI', 10),
-                                    bg='white', fg='#10b981')
+                                    bg='white', fg='#0d9648')  # Verde oscuro corporativo
         self.activity_label.pack(pady=(3, 10))
         
         # Iniciar animación del indicador
@@ -303,13 +303,13 @@ class ProgressWindow:
         return section_frame
 
     def create_info_section(self, parent):
-        """Crear panel de información"""
-        info_frame = tk.Frame(parent, bg='#fef3c7', relief='solid', bd=1)
+        """Crear panel de información - COLORES CORPORATIVOS"""
+        info_frame = tk.Frame(parent, bg='#f0f9f0', relief='solid', bd=1)  # Verde muy claro corporativo
         
         tk.Label(info_frame,
                 text="ℹ️ Información del Proceso",
                 font=('Segoe UI', 10, 'bold'),
-                bg='#fef3c7', fg='#92400e').pack(pady=8)
+                bg='#f0f9f0', fg='#0d9648').pack(pady=8)  # Verde oscuro corporativo
         
         info_text = ("• Se evalúan múltiples combinaciones de parámetros ARIMA\n"
                     "• Cada modelo se valida con métricas de precisión\n"
@@ -318,30 +318,30 @@ class ProgressWindow:
         tk.Label(info_frame,
                 text=info_text,
                 font=('Segoe UI', 9),
-                bg='#fef3c7', fg='#92400e',
+                bg='#f0f9f0', fg='#0d9648',  # Verde oscuro corporativo
                 justify='left').pack(padx=15, pady=(0, 10))
         
         return info_frame
 
     def create_results_section(self, parent, top_models):
-        """NUEVA FUNCIÓN: Crear sección de resultados integrada"""
-        # Crear frame principal para resultados con el mismo estilo
-        results_frame = tk.Frame(parent, bg='#ecfdf5', relief='solid', bd=1)
+        """NUEVA FUNCIÓN: Crear sección de resultados integrada - COLORES CORPORATIVOS"""
+        # Crear frame principal para resultados con el mismo estilo - COLOR CORPORATIVO
+        results_frame = tk.Frame(parent, bg='#f0f9f0', relief='solid', bd=1)  # Verde muy claro corporativo
         
-        # Header de resultados
-        header_frame = tk.Frame(results_frame, bg='#10b981', height=50)
+        # Header de resultados - COLOR CORPORATIVO
+        header_frame = tk.Frame(results_frame, bg='#0d9648', height=50)  # Verde oscuro corporativo
         header_frame.pack(fill='x')
         header_frame.pack_propagate(False)
         
         tk.Label(header_frame,
                 text="🎉 RESULTADOS DE LA OPTIMIZACIÓN",
                 font=('Segoe UI', 14, 'bold'),
-                bg='#10b981', fg='white').pack(pady=12)
+                bg='#0d9648', fg='white').pack(pady=12)
         
         # Contenido scrollable para los resultados
-        canvas = tk.Canvas(results_frame, bg='#ecfdf5', height=300)
+        canvas = tk.Canvas(results_frame, bg='#f0f9f0', height=300)
         scrollbar = ttk.Scrollbar(results_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg='#ecfdf5')
+        scrollable_frame = tk.Frame(canvas, bg='#f0f9f0')
         
         scrollable_frame.bind(
             "<Configure>",
@@ -363,22 +363,22 @@ class ProgressWindow:
             # Menos de 3 modelos pero al menos 1
             for i, model in enumerate(top_models):
                 medal = f"#{i+1}"
-                color = "#10b981"
+                color = "#0d9648"  # Verde corporativo
                 self.create_model_card(scrollable_frame, i+1, medal, model, color)
         
-        # Información adicional
-        info_frame = tk.Frame(scrollable_frame, bg='#dbeafe', relief='solid', bd=1)
+        # Información adicional - COLORES CORPORATIVOS
+        info_frame = tk.Frame(scrollable_frame, bg='#e8f5e8', relief='solid', bd=1)  # Verde claro corporativo
         info_frame.pack(fill='x', padx=15, pady=10)
         
         tk.Label(info_frame,
                 text="✅ Bridge de Parámetros Actualizado",
                 font=('Segoe UI', 10, 'bold'),
-                bg='#dbeafe', fg='#1e40af').pack(pady=5)
+                bg='#e8f5e8', fg='#0d9648').pack(pady=5)  # Verde oscuro corporativo
         
         tk.Label(info_frame,
                 text="Los presets del selector de parámetros han sido actualizados automáticamente\ncon estos modelos optimizados.",
                 font=('Segoe UI', 9),
-                bg='#dbeafe', fg='#1e40af',
+                bg='#e8f5e8', fg='#0d9648',  # Verde oscuro corporativo
                 justify='center').pack(pady=(0, 5))
         
         # Configurar canvas y scrollbar
@@ -414,14 +414,14 @@ class ProgressWindow:
         mape = model.get('mape', 0)
         r2_score = model.get('r2_score', 0)
         
-        # Fila 1: Precisión destacada
-        precision_frame = tk.Frame(content, bg='#f0fdf4', relief='solid', bd=1)
+        # Fila 1: Precisión destacada - COLOR CORPORATIVO
+        precision_frame = tk.Frame(content, bg='#f0f9f0', relief='solid', bd=1)  # Verde muy claro corporativo
         precision_frame.pack(fill='x', pady=(0, 5))
         
         tk.Label(precision_frame,
                 text=f"PRECISIÓN: {precision:.1f}%",
                 font=('Segoe UI', 12, 'bold'),
-                bg='#f0fdf4', fg='#15803d').pack(pady=5)
+                bg='#f0f9f0', fg='#0d9648').pack(pady=5)  # Verde oscuro corporativo
         
         # Fila 2: Parámetros
         params_frame = tk.Frame(content, bg='white')
@@ -462,25 +462,25 @@ class ProgressWindow:
                 bg='#fafafa', fg='#6b7280').pack(pady=3)
         
     def create_fixed_buttons(self, parent):
-        """Crear sección de botones fija"""
+        """Crear sección de botones fija - COLORES CORPORATIVOS"""
         buttons_frame = tk.Frame(parent, bg='#f8fafc')
         buttons_frame.pack(fill='x', expand=True)
         
-        # Botón cancelar (izquierda)
+        # Botón cancelar (izquierda) - COLOR ROJO ARMONIOSO
         self.cancel_btn = tk.Button(buttons_frame,
                                    text="CANCELAR PROCESO",
                                    font=('Segoe UI', 10, 'bold'),
-                                   bg='#ef4444', fg='white',
+                                   bg='#dc2626', fg='white',
                                    relief='flat', padx=20, pady=8,
                                    cursor='hand2',
                                    command=self.cancel_process)
         self.cancel_btn.pack(side='left')
         
-        # Botón cerrar (derecha)
+        # Botón cerrar (derecha) - COLOR CORPORATIVO GRIS
         self.close_btn = tk.Button(buttons_frame,
                                   text="CERRAR",
                                   font=('Segoe UI', 10, 'bold'),
-                                  bg='#6b7280', fg='white',
+                                  bg='#a1a1a5', fg='white',  # Color corporativo gris
                                   relief='flat', padx=20, pady=8,
                                   cursor='hand2', state='disabled',
                                   command=self.close_window)
@@ -551,7 +551,7 @@ class ProgressWindow:
             self.show_completion_message()
 
     def show_results(self, top_models):
-        """MÉTODO MODIFICADO: Transformar la interfaz para mostrar resultados"""
+        """MÉTODO MODIFICADO: Transformar la interfaz para mostrar resultados - COLORES CORPORATIVOS"""
         try:
             if self.results_shown:
                 return
@@ -561,10 +561,10 @@ class ProgressWindow:
             
             print(f"show_results: Transformando interfaz para mostrar {len(top_models)} modelos")
             
-            # PASO 1: Actualizar header
+            # PASO 1: Actualizar header - COLOR CORPORATIVO
             self.title_label.config(text="✅ Optimización Completada Exitosamente",
-                                   bg='#10b981')
-            self.header_frame.config(bg='#10b981')
+                                   bg='#0d9648')  # Verde oscuro corporativo
+            self.header_frame.config(bg='#0d9648')
             
             # PASO 2: Ocultar sección de progreso
             self.progress_section.pack_forget()
@@ -576,16 +576,16 @@ class ProgressWindow:
             self.results_section = self.create_results_section(self.main_container, top_models)
             self.results_section.pack(fill='both', expand=True, pady=(0, 15))
             
-            # PASO 5: Actualizar botones
+            # PASO 5: Actualizar botones - COLORES CORPORATIVOS
             self.cancel_btn.configure(
                 state='disabled',
-                bg='#9ca3af',
+                bg='#a1a1a5',  # Color corporativo gris
                 text="COMPLETADO"
             )
             
             self.close_btn.configure(
                 state='normal',
-                bg='#10b981',
+                bg='#0d9648',  # Verde oscuro corporativo
                 text="CERRAR RESULTADOS"
             )
             
@@ -593,8 +593,12 @@ class ProgressWindow:
             self.update_bridge_with_results(top_models)
             
             # PASO 7: Redimensionar ventana si es necesario
-            self.window.geometry("650x750")  # Más alto para mostrar resultados
-            
+            # PASO 7: Redimensionar ventana si es necesario
+            self.window.update_idletasks()
+            x = (self.window.winfo_screenwidth() // 2) - 325  # 650/2 = 325
+            y = max(30, (self.window.winfo_screenheight() // 2) - 475)  # 375 + 100 = 475 (sube 100px más)
+            self.window.geometry(f"650x750+{x}+{y}")
+                        
             print("✅ Interfaz transformada exitosamente para mostrar resultados")
             
         except Exception as e:
@@ -602,15 +606,15 @@ class ProgressWindow:
             self.show_completion_message()
 
     def show_completion_message(self):
-        """Mostrar mensaje de finalización simple transformando la interfaz"""
+        """Mostrar mensaje de finalización simple transformando la interfaz - COLORES CORPORATIVOS"""
         try:
             self.results_shown = True
             self.animation_running = False
             
-            # Actualizar header
+            # Actualizar header - COLOR CORPORATIVO GRIS
             self.title_label.config(text="✅ Proceso Completado",
-                                   bg='#6b7280')
-            self.header_frame.config(bg='#6b7280')
+                                   bg='#a1a1a5')  # Color corporativo gris
+            self.header_frame.config(bg='#a1a1a5')
             
             # Ocultar progreso e info
             self.progress_section.pack_forget()
@@ -630,16 +634,16 @@ class ProgressWindow:
                     font=('Segoe UI', 10),
                     bg='#f3f4f6', fg='#6b7280').pack(pady=10)
             
-            # Actualizar botones
+            # Actualizar botones - COLORES CORPORATIVOS
             self.cancel_btn.configure(
                 state='disabled',
-                bg='#9ca3af',
+                bg='#a1a1a5',  # Color corporativo gris
                 text="COMPLETADO"
             )
             
             self.close_btn.configure(
                 state='normal',
-                bg='#6b7280',
+                bg='#a1a1a5',  # Color corporativo gris
                 text="CERRAR"
             )
             

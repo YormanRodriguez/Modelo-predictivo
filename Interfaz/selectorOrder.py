@@ -1,4 +1,4 @@
-# selectorOrder.py - Diseño Original con Bridge de Parámetros Optimizado
+# selectorOrder.py
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
